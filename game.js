@@ -1,9 +1,10 @@
 /**
- * IA: AVANCE IMPARABLE — CYBER PLATFORMER (MARIO STYLE 4-WORLD SAGA)
+ * IA: AVANCE IMPARABLE — CYBER PLATFORMER (CAMPAÑA ARCADE DE 5 MUNDOS)
  * Mundo 1-1: La Red Local (Fundamentos y Pisotón)
  * Mundo 1-2: La Ciudad Conectada (Drones y Plataformas Móviles)
- * Mundo 1-3: El Núcleo Central (Matrix, Blaster Láser y Jefe Mega-Glitch)
+ * Mundo 1-3: El Núcleo Central (Bláster Láser y Guardián Corrupto)
  * Mundo 1-4: La Nube Cuántica & Estación Orbital (Doble Salto, Trampolines, Barras Láser y Phishing Drones)
+ * Mundo 1-5: El Archivo de las Decisiones (Auditoría, responsabilidad y seguridad de datos)
  */
 
 // --- CONFIGURACIÓN PRINCIPAL ---
@@ -305,12 +306,16 @@ class InputState {
     this.jump = false;
     this.jumpJustPressed = false;
     this.down = false;
+    this.downJustPressed = false;
     this.shootJustPressed = false;
 
     window.addEventListener('keydown', (e) => {
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.left = true;
       if (e.code === 'KeyD' || e.code === 'ArrowRight') this.right = true;
-      if (e.code === 'KeyS' || e.code === 'ArrowDown') this.down = true;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+        if (!this.down) this.downJustPressed = true;
+        this.down = true;
+      }
       if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
         if (!this.jump) this.jumpJustPressed = true;
         this.jump = true;
@@ -332,6 +337,28 @@ class InputState {
       if (e.code === 'KeyF' || e.code === 'KeyE') {
         this.shootJustPressed = false;
       }
+    });
+
+    document.querySelectorAll('[data-control]').forEach((button) => {
+      const control = button.dataset.control;
+      const release = () => {
+        if (control === 'left') this.left = false;
+        if (control === 'right') this.right = false;
+        if (control === 'jump') this.jump = false;
+        if (control === 'down') this.down = false;
+      };
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        button.setPointerCapture(event.pointerId);
+        if (control === 'left') this.left = true;
+        if (control === 'right') this.right = true;
+        if (control === 'jump') { this.jump = true; this.jumpJustPressed = true; }
+        if (control === 'down') { this.down = true; this.downJustPressed = true; }
+        if (control === 'shoot') this.shootJustPressed = true;
+      });
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('lostpointercapture', release);
     });
   }
 }
@@ -823,12 +850,30 @@ class MysteryBlock {
     this.used = false;
     this.bounceY = 0;
     this.bouncing = false;
+    this.respawnTimer = 0;
+  }
+
+  update(player) {
+    if (!this.used || !['shield', 'laser', 'overclock'].includes(this.content)) return;
+    this.respawnTimer -= 1 / 60;
+    if (this.respawnTimer > 0) return;
+
+    const powerLost = this.content === 'shield'
+      ? !player.hasShield
+      : (this.content === 'laser' ? !player.hasLaser : !player.isOverclocked);
+    if (powerLost) {
+      this.used = false;
+      this.respawnTimer = 0;
+    } else {
+      this.respawnTimer = 1;
+    }
   }
 
   hit(game) {
     if (this.used || this.bouncing) return;
     this.bouncing = true;
     this.used = true;
+    if (['shield', 'laser', 'overclock'].includes(this.content)) this.respawnTimer = 10;
     game.sound.playBlockBump();
 
     let bumpTime = 0;
@@ -849,22 +894,25 @@ class MysteryBlock {
       game.particles.emit(this.x + 24, this.y, 14, '#ffd700');
       game.particles.addText(this.x + 10, this.y - 15, '+100', '#ffd700');
     } else if (this.content === 'shield') {
+      const wasMissing = !game.player.hasShield;
       game.player.hasShield = true;
-      game.addScore(500);
+      if (wasMissing) game.addScore(500);
       game.sound.playPowerup();
       game.particles.emit(this.x + 24, this.y, 20, '#00f3ff');
       game.particles.addText(this.x - 10, this.y - 20, '¡FIREWALL!', '#00f3ff');
       game.triggerNexusMsg('¡Firewall activado! Te protegerá de un impacto.');
     } else if (this.content === 'overclock') {
+      const wasMissing = !game.player.isOverclocked;
       game.player.activateOverclock();
-      game.addScore(1000);
+      if (wasMissing) game.addScore(1000);
       game.sound.playPowerup();
       game.particles.emit(this.x + 24, this.y, 30, '#ffd700');
       game.particles.addText(this.x - 20, this.y - 20, '¡OVERCLOCK! ★', '#ffd700');
       game.triggerNexusMsg('¡OVERCLOCK! Velocidad e invencibilidad.');
     } else if (this.content === 'laser') {
+      const wasMissing = !game.player.hasLaser;
       game.player.hasLaser = true;
-      game.addScore(800);
+      if (wasMissing) game.addScore(800);
       game.sound.playPowerup();
       game.particles.emit(this.x + 24, this.y, 25, '#00f3ff');
       game.particles.addText(this.x - 30, this.y - 20, '¡BLASTER! ⚡', '#00f3ff');
@@ -891,6 +939,7 @@ class MysteryBlock {
 
       let glyph = '?';
       let col = '#00f3ff';
+      if (this.content === 'shield') { glyph = '🛡'; col = '#38bdf8'; }
       if (this.content === 'overclock') { glyph = '★'; col = '#ffd700'; }
       if (this.content === 'laser') { glyph = '⚡'; col = '#00f3ff'; }
       if (this.content === 'wings') { glyph = '🪽'; col = '#10b981'; }
@@ -1153,8 +1202,8 @@ class BossMegaGlitch {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.width = 110;
-    this.height = 110;
+    this.width = 132;
+    this.height = 155;
     this.vx = -2.2;
     this.maxHp = 6;
     this.hp = 6;
@@ -1163,6 +1212,7 @@ class BossMegaGlitch {
     this.jumpTimer = 0;
     this.vy = 0;
     this.onGround = true;
+    this.attackPulse = 0;
   }
 
   update(game) {
@@ -1193,6 +1243,7 @@ class BossMegaGlitch {
       this.vy = 0;
       this.onGround = true;
     }
+    this.attackPulse += 1 / 60;
   }
 
   takeHit(game, damage = 1) {
@@ -1222,7 +1273,7 @@ class BossMegaGlitch {
       game.particles.emit(this.x + Math.random() * this.width, this.y + Math.random() * this.height, 4, '#ffd700');
     }
 
-    game.triggerNexusMsg('¡MEGA-GLITCH ELIMINADO! El Núcleo de la IA ha sido liberado.');
+    game.triggerNexusMsg('¡EL GUARDIÁN CORRUPTO CAYÓ! El Núcleo ya puede auditarse y recuperarse.');
     setTimeout(() => {
       game.onLevelComplete();
     }, 1800);
@@ -1236,28 +1287,123 @@ class BossMegaGlitch {
     if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 70) % 2 === 0) return;
 
     ctx.save();
-    const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
-    ctx.shadowColor = '#ff0055';
-    ctx.shadowBlur = 20 + pulse * 15;
+    const time = Date.now() / 1000;
+    const pulse = (Math.sin(time * 5) + 1) / 2;
+    const glitch = Math.sin(time * 17) * 3;
+    const centerX = rx + this.width / 2;
 
-    ctx.fillStyle = '#0f051d';
-    ctx.fillRect(rx, ry, this.width, this.height);
-    ctx.strokeStyle = '#ff0055';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(rx, ry, this.width, this.height);
+    // Cables que serpentean detrás de la armadura.
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const sway = Math.sin(time * 3.2 + i * 1.8) * 22;
+      const startX = centerX + side * 42;
+      ctx.strokeStyle = i === 1 ? 'rgba(255, 0, 85, .9)' : 'rgba(14, 20, 38, .98)';
+      ctx.lineWidth = i === 1 ? 5 : 9;
+      ctx.shadowColor = i === 1 ? '#ff174f' : '#000';
+      ctx.shadowBlur = i === 1 ? 12 : 4;
+      ctx.beginPath();
+      ctx.moveTo(startX, ry + 82 + i * 8);
+      ctx.bezierCurveTo(startX + side * 55, ry + 105 + sway, startX - side * 22, ry + 145 - sway, startX + side * (38 + sway), ry + 162);
+      ctx.stroke();
+      ctx.fillStyle = '#ff174f';
+      ctx.beginPath();
+      ctx.arc(startX + side * (38 + sway), ry + 162, 4 + pulse * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    ctx.fillStyle = '#ff0055';
+    // Eco holográfico: una copia corrupta que parpadea detrás del jefe.
+    if (Math.sin(time * 2.4) > 0.55) {
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = '#ff174f';
+      ctx.fillRect(rx + 15 + glitch * 2, ry + 20, this.width - 25, this.height - 28);
+      ctx.globalAlpha = 1;
+    }
+
+    // Piernas y botas de servidor.
+    ctx.shadowColor = '#ff174f';
+    ctx.shadowBlur = 10 + pulse * 10;
+    ctx.fillStyle = '#080b14';
+    ctx.strokeStyle = '#31394b';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(rx + this.width / 2, ry + this.height / 2, 28, 0, Math.PI * 2);
+    ctx.moveTo(rx + 28, ry + 116); ctx.lineTo(rx + 58, ry + 116);
+    ctx.lineTo(rx + 54, ry + 145); ctx.lineTo(rx + 30, ry + 145); ctx.closePath();
+    ctx.moveTo(rx + 74, ry + 116); ctx.lineTo(rx + 104, ry + 116);
+    ctx.lineTo(rx + 102, ry + 145); ctx.lineTo(rx + 78, ry + 145); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(rx + 22, ry + 142, 40, 12);
+    ctx.fillRect(rx + 72, ry + 142, 40, 12);
+    ctx.fillStyle = '#ff174f';
+    ctx.fillRect(rx + 29, ry + 146, 24, 3);
+    ctx.fillRect(rx + 79, ry + 146, 24, 3);
+
+    // Torso blindado, construido como una coraza de placas angulosas.
+    const armor = ctx.createLinearGradient(rx, ry + 55, rx + this.width, ry + 128);
+    armor.addColorStop(0, '#283044'); armor.addColorStop(.45, '#101522'); armor.addColorStop(1, '#05070d');
+    ctx.fillStyle = armor;
+    ctx.strokeStyle = '#ff174f';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(rx + 32, ry + 58); ctx.lineTo(rx + 100, ry + 58);
+    ctx.lineTo(rx + 123, ry + 82); ctx.lineTo(rx + 109, ry + 124);
+    ctx.lineTo(rx + 66, ry + 137); ctx.lineTo(rx + 23, ry + 124);
+    ctx.lineTo(rx + 9, ry + 82); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Hombros con puntas y placas rojas.
+    ctx.fillStyle = '#151b2a';
+    ctx.beginPath();
+    ctx.moveTo(rx + 29, ry + 67); ctx.lineTo(rx + 2, ry + 72); ctx.lineTo(rx + 15, ry + 43); ctx.lineTo(rx + 42, ry + 52); ctx.closePath();
+    ctx.moveTo(rx + 103, ry + 67); ctx.lineTo(rx + 130, ry + 72); ctx.lineTo(rx + 117, ry + 43); ctx.lineTo(rx + 90, ry + 52); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff174f';
+    ctx.fillRect(rx + 13, ry + 67, 17, 4); ctx.fillRect(rx + 102, ry + 67, 17, 4);
+
+    // Máscara-pantalla; sus ojos cambian de forma y brillo como una IA observando.
+    ctx.fillStyle = '#03050a';
+    ctx.strokeStyle = '#657087';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(rx + 35, ry + 7); ctx.lineTo(rx + 97, ry + 7);
+    ctx.lineTo(rx + 112, ry + 24); ctx.lineTo(rx + 104, ry + 58);
+    ctx.lineTo(rx + 66, ry + 72); ctx.lineTo(rx + 28, ry + 58);
+    ctx.lineTo(rx + 20, ry + 24); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff174f'; ctx.shadowColor = '#ff174f'; ctx.shadowBlur = 18 + pulse * 18;
+    const eyeWidth = 18 + pulse * 9;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 31, ry + 32); ctx.lineTo(centerX - 7, ry + 28 + glitch); ctx.lineTo(centerX - 10, ry + 37); ctx.lineTo(centerX - 30, ry + 40); ctx.closePath();
+    ctx.moveTo(centerX + 31, ry + 32); ctx.lineTo(centerX + 7, ry + 28 - glitch); ctx.lineTo(centerX + 10, ry + 37); ctx.lineTo(centerX + 30, ry + 40); ctx.closePath();
     ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(centerX - eyeWidth / 2, ry + 52, eyeWidth, 3);
+    ctx.fillStyle = '#ff174f';
+    for (let i = 0; i < 5; i++) ctx.fillRect(centerX - 17 + i * 8, ry + 58 + (i % 2) * 3, 3, 5);
 
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(rx + this.width / 2 - 16, ry + this.height / 2 - 16, 32, 32);
+    // Núcleo expuesto y líneas de datos de la armadura.
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = '#ff174f';
+    ctx.beginPath();
+    ctx.moveTo(centerX, ry + 83); ctx.lineTo(centerX + 18, ry + 99); ctx.lineTo(centerX, ry + 117); ctx.lineTo(centerX - 18, ry + 99); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.globalAlpha = .75 + pulse * .25;
+    ctx.fillRect(centerX - 2, ry + 89, 4, 20);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255, 23, 79, .8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(rx + 37, ry + 78); ctx.lineTo(rx + 49, ry + 91); ctx.lineTo(rx + 42, ry + 105);
+    ctx.moveTo(rx + 95, ry + 78); ctx.lineTo(rx + 83, ry + 91); ctx.lineTo(rx + 90, ry + 105); ctx.stroke();
 
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(rx + 22, ry + 24, 18, 12);
-    ctx.fillRect(rx + this.width - 40, ry + 24, 18, 12);
+    // Fragmentos de señal alrededor de la silueta.
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 4; i++) {
+      const flicker = Math.sin(time * 9 + i * 2) * 5;
+      ctx.fillStyle = i % 2 ? '#ff174f' : '#aab4c8';
+      ctx.globalAlpha = .45 + pulse * .5;
+      ctx.fillRect(rx - 7 + (i % 2) * (this.width + 6), ry + 22 + i * 25 + flicker, 5 + (i % 3) * 3, 2);
+    }
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 }
@@ -1350,6 +1496,51 @@ class DataGoalPole {
   }
 }
 
+class SublevelPortal {
+  constructor(x, floorY, label, destination = '') {
+    this.x = x;
+    this.y = floorY - 78;
+    this.width = 68;
+    this.height = 78;
+    this.label = label;
+    this.destination = destination;
+    this.phase = Math.random() * Math.PI * 2;
+  }
+
+  draw(ctx, cameraX) {
+    const rx = this.x - cameraX;
+    const pulse = (Math.sin(Date.now() / 220 + this.phase) + 1) / 2;
+    const color = this.label === 'SALIR' ? '#38bdf8' : '#10b981';
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10 + pulse * 14;
+    ctx.fillStyle = '#07111d';
+    ctx.beginPath();
+    ctx.roundRect(rx, this.y, this.width, this.height, [15, 15, 5, 5]);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = `rgba(16, 185, 129, ${.16 + pulse * .2})`;
+    ctx.beginPath();
+    ctx.ellipse(rx + this.width / 2, this.y + 38, 20 + pulse * 3, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(226, 232, 240, .85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(rx + this.width / 2, this.y + 38, 14, 25, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(this.label, rx + this.width / 2, this.y - 8);
+    ctx.fillStyle = '#d1fae5';
+    ctx.font = '10px "Share Tech Mono", monospace';
+    ctx.fillText('S / ▼', rx + this.width / 2, this.y + this.height + 16);
+    ctx.restore();
+  }
+}
+
 // ========================================================
 // JUGADOR: LUCAS
 // ========================================================
@@ -1426,6 +1617,11 @@ class MarioLucas {
       return;
     }
 
+    if (input.downJustPressed) {
+      input.downJustPressed = false;
+      if (this.onGround && game.tryUsePortal(this)) return;
+    }
+
     if (this.invulnerableTimer > 0) this.invulnerableTimer -= 1 / 60;
     if (this.overclockTimer > 0) {
       this.overclockTimer -= 1 / 60;
@@ -1500,6 +1696,12 @@ class MarioLucas {
     // 4. Movimiento y colisiones
     this.x += this.vx;
     this.resolveCollisionsX(game.platforms);
+    // El escenario tiene un borde sólido: Lucas no puede salirse por la izquierda
+    // y caer fuera del primer tramo de suelo al comenzar el mundo.
+    if (this.x < 0) {
+      this.x = 0;
+      this.vx = 0;
+    }
 
     this.y += this.vy;
     this.onGround = false;
@@ -1752,12 +1954,16 @@ class MarioLucas {
       return;
     }
 
+    const lostBlaster = this.hasLaser;
+    this.hasLaser = false;
     this.hearts--;
     game.updateHeartsHUD();
+    game.saveProgress();
     game.sound.playHurt();
     this.invulnerableTimer = 1.8;
     this.vy = -7;
     this.vx = -this.facing * 4.5;
+    if (lostBlaster) game.triggerNexusMsg('¡Perdiste el bláster! Busca un cubo ⚡ para recuperarlo.');
 
     if (this.hearts <= 0) {
       game.onGameOver();
@@ -1844,7 +2050,7 @@ class MarioLucas {
 }
 
 // ========================================================
-// PARALLAX BACKGROUND SYSTEM (4 MUNDOS)
+// PARALLAX BACKGROUND SYSTEM (5 MUNDOS)
 // ========================================================
 class ParallaxCyberBackground {
   constructor(levelWidth, worldNum = '1-1') {
@@ -1915,11 +2121,47 @@ class ParallaxCyberBackground {
         });
       }
     }
+
+    this.archiveColumns = [];
+    if (worldNum === '1-5' || worldNum === 'SUB-A') {
+      for (let i = 0; i < 28; i++) {
+        this.archiveColumns.push({
+          x: Math.random() * levelWidth,
+          h: 190 + Math.random() * 300,
+          w: 105 + Math.random() * 100,
+          shelves: 4 + Math.floor(Math.random() * 4),
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    this.localNodes = [];
+    if (worldNum === '1-1') {
+      for (let i = 0; i < 22; i++) this.localNodes.push({ x: Math.random() * levelWidth, y: 190 + Math.random() * 240, phase: Math.random() * Math.PI * 2 });
+    }
+
+    this.orbitalSatellites = [];
+    if (worldNum === '1-4') {
+      for (let i = 0; i < 4; i++) this.orbitalSatellites.push({ x: i * 1550 + 320, y: 115 + (i % 2) * 115, phase: i * 1.4, scale: .65 + (i % 3) * .2 });
+    }
   }
 
   draw(ctx, cameraX) {
+    const time = Date.now() / 1000;
     const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    if (this.worldNum === '1-4') {
+    if (this.worldNum === 'SUB-A') {
+      skyGrad.addColorStop(0, '#031812');
+      skyGrad.addColorStop(.58, '#062d24');
+      skyGrad.addColorStop(1, '#020b13');
+    } else if (this.worldNum === 'SUB-B') {
+      skyGrad.addColorStop(0, '#061326');
+      skyGrad.addColorStop(.55, '#0a2742');
+      skyGrad.addColorStop(1, '#020811');
+    } else if (this.worldNum === '1-5') {
+      skyGrad.addColorStop(0, '#10051c');
+      skyGrad.addColorStop(0.55, '#17112a');
+      skyGrad.addColorStop(1, '#071b1b');
+    } else if (this.worldNum === '1-4') {
       // Espacio Orbital: Azul noche cósmico con brillo de la atmósfera terrestre abajo
       skyGrad.addColorStop(0, '#01020a');
       skyGrad.addColorStop(0.65, '#071630');
@@ -1941,7 +2183,91 @@ class ParallaxCyberBackground {
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // En Nivel 4: Curvatura de la Tierra abajo y satélite gigante
-    if (this.worldNum === '1-4') {
+    if (this.worldNum === '1-5' || this.worldNum === 'SUB-A') {
+      ctx.save();
+      const vaultX = CANVAS_WIDTH * .55 - cameraX * .16;
+      const vaultY = 270;
+      const vaultGlow = ctx.createRadialGradient(vaultX, vaultY, 25, vaultX, vaultY, 250);
+      vaultGlow.addColorStop(0, 'rgba(245, 158, 11, .28)');
+      vaultGlow.addColorStop(.5, 'rgba(16, 185, 129, .12)');
+      vaultGlow.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      ctx.fillStyle = vaultGlow;
+      ctx.fillRect(vaultX - 260, vaultY - 260, 520, 520);
+      ctx.translate(vaultX, vaultY);
+      ctx.strokeStyle = 'rgba(245, 158, 11, .48)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 18;
+      ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(16, 185, 129, .55)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 145, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#f59e0b'; ctx.font = '16px "Share Tech Mono", monospace'; ctx.textAlign = 'center';
+      ctx.fillText(this.worldNum === 'SUB-A' ? 'CACHÉ OCULTO' : 'ARCHIVO CENTRAL', 0, 5);
+      ctx.restore();
+
+      ctx.save();
+      const shaftOffset = cameraX * .2;
+      this.archiveColumns.forEach(column => {
+        const x = column.x - shaftOffset;
+        if (x + column.w < -30 || x > CANVAS_WIDTH + 30) return;
+        const top = CANVAS_HEIGHT - column.h;
+        const alpha = .16 + (Math.sin(Date.now() / 500 + column.phase) + 1) * .1;
+        const accent = column.phase % 2 > 1 ? '#10b981' : '#f59e0b';
+        const cabinet = ctx.createLinearGradient(x, top, x + column.w, top);
+        cabinet.addColorStop(0, 'rgba(12, 15, 29, .92)');
+        cabinet.addColorStop(.5, 'rgba(33, 25, 42, .9)');
+        cabinet.addColorStop(1, 'rgba(9, 15, 25, .94)');
+        ctx.globalAlpha = .86;
+        ctx.fillStyle = cabinet;
+        ctx.fillRect(x, top, column.w, column.h);
+        ctx.strokeStyle = `rgba(245, 158, 11, ${alpha + .2})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 2, top + 2, column.w - 4, column.h - 3);
+        const shelfHeight = (column.h - 18) / column.shelves;
+        for (let row = 0; row < column.shelves; row++) {
+          const shelfY = top + 10 + row * shelfHeight;
+          ctx.fillStyle = 'rgba(0, 0, 0, .55)';
+          ctx.fillRect(x + 9, shelfY, column.w - 18, shelfHeight - 5);
+          ctx.fillStyle = `rgba(245, 158, 11, ${alpha + .15})`;
+          ctx.fillRect(x + 8, shelfY + shelfHeight - 6, column.w - 16, 2);
+          for (let cell = 0; cell < 4; cell++) {
+            const lit = Math.sin(time / 2 + column.phase + row * 2 + cell) > -.15;
+            ctx.fillStyle = lit ? accent : 'rgba(71, 85, 105, .75)';
+            ctx.globalAlpha = lit ? .7 : .35;
+            ctx.fillRect(x + 14 + cell * ((column.w - 36) / 4), shelfY + 5, 11, Math.max(5, shelfHeight - 14));
+          }
+          ctx.globalAlpha = .86;
+        }
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = .65;
+        ctx.fillRect(x + 8, top + 5, column.w - 16, 3);
+      });
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    } else if (this.worldNum === 'SUB-B') {
+      ctx.save();
+      const offset = (cameraX * .25) % 290;
+      for (let x = -320 - offset; x < CANVAS_WIDTH + 320; x += 290) {
+        ctx.strokeStyle = 'rgba(56, 189, 248, .32)';
+        ctx.lineWidth = 18;
+        ctx.beginPath();
+        ctx.moveTo(x, CANVAS_HEIGHT + 30);
+        ctx.quadraticCurveTo(x + 145, 80, x + 290, CANVAS_HEIGHT + 30);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(14, 165, 233, .75)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + 16, CANVAS_HEIGHT + 20);
+        ctx.quadraticCurveTo(x + 145, 108, x + 274, CANVAS_HEIGHT + 20);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(56, 189, 248, .28)';
+        for (let light = 0; light < 4; light++) ctx.fillRect(x + 52 + light * 58, 180 + (light % 2) * 20, 8, 3);
+      }
+      ctx.strokeStyle = 'rgba(245, 158, 11, .7)';
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(0, 520); ctx.lineTo(CANVAS_WIDTH, 520); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 535); ctx.lineTo(CANVAS_WIDTH, 535); ctx.stroke();
+      ctx.restore();
+    } else if (this.worldNum === '1-4') {
       ctx.save();
       // Curva de la Tierra en el horizonte inferior
       ctx.fillStyle = '#0369a1';
@@ -1969,9 +2295,29 @@ class ParallaxCyberBackground {
           ctx.fill();
         }
       });
+
+      // Satélites con paneles y órbitas para reforzar la escala del espacio.
+      this.orbitalSatellites.forEach((satellite, index) => {
+        const sx = satellite.x - cameraX * .34;
+        const sy = satellite.y + Math.sin(time * .7 + satellite.phase) * 12;
+        if (sx < -80 || sx > CANVAS_WIDTH + 80) return;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(Math.sin(time * .2 + satellite.phase) * .08);
+        ctx.scale(satellite.scale, satellite.scale);
+        ctx.strokeStyle = 'rgba(56, 189, 248, .28)';
+        ctx.beginPath(); ctx.ellipse(0, 0, 86 + index * 8, 20, -.2, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#0b1930'; ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 2;
+        ctx.fillRect(-12, -10, 24, 20); ctx.strokeRect(-12, -10, 24, 20);
+        ctx.fillStyle = '#2563eb'; ctx.fillRect(-53, -8, 34, 16); ctx.fillRect(19, -8, 34, 16);
+        ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1;
+        for (let cell = -45; cell < -19; cell += 9) { ctx.beginPath(); ctx.moveTo(cell, -8); ctx.lineTo(cell, 8); ctx.stroke(); }
+        for (let cell = 27; cell < 53; cell += 9) { ctx.beginPath(); ctx.moveTo(cell, -8); ctx.lineTo(cell, 8); ctx.stroke(); }
+        ctx.restore();
+      });
       ctx.restore();
-    } else {
-      // Luna Cuántica en mundos 1-1, 1-2, 1-3
+    } else if (!['1-5', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
+      // Luna Cuántica visible desde los distritos terrestres.
       ctx.save();
       const moonX = CANVAS_WIDTH - 240 - (cameraX * 0.02);
       const moonY = 120;
@@ -2003,25 +2349,89 @@ class ParallaxCyberBackground {
       ctx.restore();
     }
 
-    // Estrellas
-    ctx.fillStyle = '#fff';
-    this.stars.forEach(s => {
-      const alpha = (Math.sin(Date.now() / 400 + s.twinkle) + 1) / 2;
-      ctx.globalAlpha = 0.3 + alpha * 0.7;
-      ctx.fillRect(s.x, s.y, s.size, s.size);
-    });
-    ctx.globalAlpha = 1;
+    // Los subniveles tienen cielos propios: sin estrellas del fondo genérico.
+    if (!['SUB-A', 'SUB-B'].includes(this.worldNum)) {
+      ctx.fillStyle = '#fff';
+      this.stars.forEach(s => {
+        const alpha = (Math.sin(Date.now() / 400 + s.twinkle) + 1) / 2;
+        ctx.globalAlpha = 0.3 + alpha * 0.7;
+        ctx.fillRect(s.x, s.y, s.size, s.size);
+      });
+      ctx.globalAlpha = 1;
+    }
 
-    // Skyline Lejano (Excepto en el espacio de 1-4)
-    if (this.worldNum !== '1-4') {
-      ctx.fillStyle = this.worldNum === '1-3' ? '#140008' : (this.worldNum === '1-2' ? '#110920' : '#090d16');
+    // Red local holográfica del primer mundo.
+    if (this.worldNum === '1-1') {
+      ctx.save();
+      const parallax = cameraX * .16;
+      ctx.strokeStyle = 'rgba(0, 243, 255, .18)'; ctx.lineWidth = 2;
+      for (let i = 1; i < this.localNodes.length; i++) {
+        const a = this.localNodes[i - 1], b = this.localNodes[i];
+        const ax = a.x - parallax, bx = b.x - parallax;
+        if (Math.max(ax, bx) < -100 || Math.min(ax, bx) > CANVAS_WIDTH + 100) continue;
+        ctx.beginPath(); ctx.moveTo(ax, a.y); ctx.lineTo((ax + bx) / 2, a.y); ctx.lineTo((ax + bx) / 2, b.y); ctx.lineTo(bx, b.y); ctx.stroke();
+      }
+      this.localNodes.forEach(node => {
+        const x = node.x - parallax;
+        if (x < -20 || x > CANVAS_WIDTH + 20) return;
+        const glow = .5 + (Math.sin(time * 2 + node.phase) + 1) * .25;
+        ctx.globalAlpha = glow;
+        ctx.fillStyle = '#00f3ff'; ctx.shadowColor = '#00f3ff'; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(x, node.y, 4 + glow * 2, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+
+    // Skyline en capas con ventanas según el tono de cada distrito.
+    if (!['1-4', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
+      ctx.fillStyle = this.worldNum === '1-5' ? '#100d19' : (this.worldNum === '1-3' ? '#140008' : (this.worldNum === '1-2' ? '#110920' : '#090d16'));
       const offsetFar = cameraX * 0.12;
       this.skylineFar.forEach(b => {
         const bx = b.x - offsetFar;
         if (bx + b.w > 0 && bx < CANVAS_WIDTH) {
-          ctx.fillRect(bx, CANVAS_HEIGHT - b.h, b.w, b.h);
+          const top = CANVAS_HEIGHT - b.h;
+          ctx.fillRect(bx, top, b.w, b.h);
+          const windowCol = this.worldNum === '1-3' ? 'rgba(255, 0, 85, .38)' : (this.worldNum === '1-5' ? 'rgba(245, 158, 11, .4)' : 'rgba(56, 189, 248, .38)');
+          ctx.fillStyle = windowCol;
+          for (let wy = top + 18; wy < CANVAS_HEIGHT - 30; wy += 28) {
+            for (let wx = bx + 12; wx < bx + b.w - 8; wx += 23) {
+              if (Math.sin(wx * .17 + wy * .11) > -.25) ctx.fillRect(wx, wy, 4, 8);
+            }
+          }
+          ctx.fillStyle = this.worldNum === '1-5' ? '#100d19' : (this.worldNum === '1-3' ? '#140008' : (this.worldNum === '1-2' ? '#110920' : '#090d16'));
         }
       });
+
+      const midOffset = cameraX * .23;
+      ctx.fillStyle = this.worldNum === '1-3' ? 'rgba(56, 5, 24, .8)' : (this.worldNum === '1-5' ? 'rgba(31, 22, 36, .83)' : (this.worldNum === '1-2' ? 'rgba(29, 20, 49, .82)' : 'rgba(12, 26, 42, .8)'));
+      this.skylineMid.forEach((b, index) => {
+        const bx = b.x - midOffset;
+        if (bx + b.w < 0 || bx > CANVAS_WIDTH) return;
+        const height = b.h * .72;
+        const top = CANVAS_HEIGHT - height;
+        ctx.fillRect(bx, top, b.w, height);
+        ctx.fillStyle = this.worldNum === '1-3' ? 'rgba(255, 23, 79, .45)' : (this.worldNum === '1-5' ? 'rgba(16, 185, 129, .45)' : (this.worldNum === '1-2' ? 'rgba(255, 0, 110, .5)' : 'rgba(0, 243, 255, .42)'));
+        ctx.fillRect(bx + b.w * .45, top + 14, 3, height - 25);
+        for (let row = 0; row < 5; row++) {
+          if ((index + row) % 3 !== 0) ctx.fillRect(bx + 10, top + 18 + row * 31, Math.max(6, b.w * .22), 3);
+        }
+        ctx.fillStyle = this.worldNum === '1-3' ? 'rgba(56, 5, 24, .8)' : (this.worldNum === '1-5' ? 'rgba(31, 22, 36, .83)' : (this.worldNum === '1-2' ? 'rgba(29, 20, 49, .82)' : 'rgba(12, 26, 42, .8)'));
+      });
+
+      if (this.worldNum === '1-2') {
+        ctx.save();
+        const signs = ['TRÁNSITO IA', 'RED SEGURA', 'DATOS ABIERTOS', 'CENTRO CÍVICO'];
+        this.skylineMid.forEach((building, i) => {
+          if (i % 3 !== 1) return;
+          const sx = building.x - midOffset + 12;
+          if (sx < -110 || sx > CANVAS_WIDTH + 110) return;
+          const sy = CANVAS_HEIGHT - building.h * .72 + 55;
+          ctx.fillStyle = 'rgba(7, 12, 30, .88)'; ctx.fillRect(sx, sy, 92, 28);
+          ctx.strokeStyle = i % 2 ? '#ff0055' : '#00f3ff'; ctx.lineWidth = 2; ctx.strokeRect(sx, sy, 92, 28);
+          ctx.fillStyle = '#fff'; ctx.font = '9px "Share Tech Mono", monospace'; ctx.fillText(signs[i % signs.length], sx + 7, sy + 18);
+        });
+        ctx.restore();
+      }
     }
 
     // Tráfico en 1-2
@@ -2063,8 +2473,13 @@ class PlatformerGame {
 
     this.score = 0;
     this.bits = 0;
-    this.timeRemaining = 300;
+    this.timeRemaining = 420;
     this.timeTimer = null;
+    this.ethicsSeen = new Set();
+    this.savedProgress = this.readProgress();
+    this.score = this.savedProgress?.score || 0;
+    this.bits = this.savedProgress?.bits || 0;
+    this.ethicsDecisions = this.savedProgress?.decisions || {};
 
     this.assets = {
       lucasWalk: null,
@@ -2083,14 +2498,85 @@ class PlatformerGame {
     this.boss = null;
     this.purgeSwitch = null;
     this.goalPole = null;
+    this.portal = null;
+    this.activeSublevel = false;
+    this.returnWorldSnapshot = null;
 
     this.player = new MarioLucas(120, 460);
+    const savedLives = Number(this.savedProgress?.hearts);
+    if (Number.isFinite(savedLives) && savedLives > 0) this.player.hearts = savedLives;
+    this.updateHeartsHUD();
 
     this.initDOM();
     this.loadAssets().then(() => {
-      this.loadLevel('1-1');
+      const savedWorld = this.savedProgress?.world || '1-1';
+      this.loadLevel(savedWorld);
+      if (savedWorld !== '1-1') document.getElementById('btn-start-game').textContent = `CONTINUAR • MUNDO ${savedWorld} ❯`;
       requestAnimationFrame((t) => this.loop(t));
     });
+  }
+
+  readProgress() {
+    try { return JSON.parse(localStorage.getItem('ia-avance-imparable-progress') || 'null'); }
+    catch { return null; }
+  }
+
+  saveProgress(world = this.currentWorld) {
+    try {
+      const hearts = this.player.hearts > 0 ? this.player.hearts : 3;
+      const progressWorld = this.activeSublevel && this.returnWorldSnapshot
+        ? this.returnWorldSnapshot.currentWorld
+        : world;
+      localStorage.setItem('ia-avance-imparable-progress', JSON.stringify({ world: progressWorld, score: this.score, bits: this.bits, hearts, decisions: this.ethicsDecisions }));
+    }
+    catch { /* El juego sigue disponible aunque el navegador bloquee el almacenamiento local. */ }
+  }
+
+  captureLevelState() {
+    const keys = ['currentWorld', 'levelWidth', 'background', 'cameraX', 'platforms', 'movingPlatforms', 'bouncePads', 'laserBars', 'mysteryBlocks', 'dataBits', 'enemies', 'projectiles', 'boss', 'purgeSwitch', 'goalPole', 'portal'];
+    const state = {};
+    keys.forEach(key => { state[key] = this[key]; });
+    state.player = { ...this.player };
+    state.ethicsSeen = [...this.ethicsSeen];
+    state.timeRemaining = this.timeRemaining;
+    return state;
+  }
+
+  restoreLevelState(state, carriedPlayerState) {
+    Object.entries(state).forEach(([key, value]) => {
+      if (key !== 'player' && key !== 'ethicsSeen') this[key] = value;
+    });
+    Object.assign(this.player, state.player, carriedPlayerState);
+    this.ethicsSeen = new Set(state.ethicsSeen);
+  }
+
+  tryUsePortal(player) {
+    if (!this.portal || !player.onGround) return false;
+    const overlaps = player.x + player.width > this.portal.x && player.x < this.portal.x + this.portal.width;
+    if (!overlaps) return false;
+
+    this.input.down = false;
+    this.input.downJustPressed = false;
+    if (this.activeSublevel) {
+      const snapshot = this.returnWorldSnapshot;
+      if (!snapshot) return false;
+      const carriedPlayerState = {};
+      ['hearts', 'hasShield', 'hasLaser', 'hasWings', 'isOverclocked', 'overclockTimer', 'invulnerableTimer'].forEach(key => {
+        carriedPlayerState[key] = this.player[key];
+      });
+      this.activeSublevel = false;
+      this.returnWorldSnapshot = null;
+      this.restoreLevelState(snapshot, carriedPlayerState);
+      this.startLevel(false);
+      this.triggerNexusMsg('¡Volviste al mundo principal! Tus Data-Bits y mejoras siguen contigo.');
+      return true;
+    }
+
+    this.returnWorldSnapshot = this.captureLevelState();
+    this.activeSublevel = true;
+    this.loadLevel(this.portal.destination);
+    this.startLevel();
+    return true;
   }
 
   initDOM() {
@@ -2105,6 +2591,27 @@ class PlatformerGame {
       document.getElementById('sound-icon').textContent = active ? '🔊' : '🔇';
     });
 
+    document.getElementById('btn-ethics-continue').addEventListener('click', () => {
+      document.getElementById('screen-ethics').classList.add('hidden');
+      this.isRunning = true;
+      this.runState = 'playing';
+      this.input.left = this.input.right = this.input.jump = this.input.down = false;
+      this.input.downJustPressed = false;
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'KeyP' || !['playing', 'paused'].includes(this.runState)) return;
+      this.isRunning = !this.isRunning;
+      this.runState = this.isRunning ? 'playing' : 'paused';
+      this.triggerNexusMsg(this.isRunning ? 'Partida reanudada.' : 'Partida en pausa. Pulsa P para continuar.', 2500);
+    });
+    document.querySelector('[data-control="pause"]').addEventListener('click', () => {
+      if (!['playing', 'paused'].includes(this.runState)) return;
+      this.isRunning = !this.isRunning;
+      this.runState = this.isRunning ? 'playing' : 'paused';
+      this.triggerNexusMsg(this.isRunning ? 'Partida reanudada.' : 'Partida en pausa.', 2500);
+    });
+
     document.getElementById('btn-retry').addEventListener('click', () => {
       document.getElementById('screen-game-over').classList.add('hidden');
       this.restartLevel();
@@ -2113,9 +2620,11 @@ class PlatformerGame {
     // Avanzar de nivel
     document.getElementById('btn-next-level').addEventListener('click', () => {
       document.getElementById('screen-victory').classList.add('hidden');
-      if (this.currentWorld === '1-1') this.loadLevel('1-2');
-      else if (this.currentWorld === '1-2') this.loadLevel('1-3');
-      else if (this.currentWorld === '1-3') this.loadLevel('1-4');
+      const nextWorld = { '1-1': '1-2', '1-2': '1-3', '1-3': '1-4', '1-4': '1-5' }[this.currentWorld];
+      if (nextWorld) {
+        this.loadLevel(nextWorld);
+        this.saveProgress(nextWorld);
+      }
       this.startLevel();
     });
 
@@ -2124,6 +2633,10 @@ class PlatformerGame {
       document.getElementById('screen-victory').classList.add('hidden');
       this.score = 0;
       this.bits = 0;
+      this.ethicsDecisions = {};
+      this.player.hearts = 3;
+      this.updateHeartsHUD();
+      try { localStorage.removeItem('ia-avance-imparable-progress'); } catch { /* opcional */ }
       this.loadLevel('1-1');
       this.startLevel();
     });
@@ -2151,10 +2664,14 @@ class PlatformerGame {
 
   loadLevel(worldId) {
     this.currentWorld = worldId;
+    this.cameraX = 0;
+    this.ethicsSeen = new Set();
+    this.runState = 'playing';
     document.getElementById('hud-world-num').textContent = worldId;
     this.projectiles = [];
     this.boss = null;
     this.purgeSwitch = null;
+    this.portal = null;
     this.bouncePads = [];
     this.laserBars = [];
     document.getElementById('boss-hud').classList.add('hidden');
@@ -2163,6 +2680,9 @@ class PlatformerGame {
     else if (worldId === '1-2') this.buildLevel2();
     else if (worldId === '1-3') this.buildLevel3();
     else if (worldId === '1-4') this.buildLevel4();
+    else if (worldId === '1-5') this.buildLevel5();
+    else if (worldId === 'SUB-A') this.buildBonusSublevelA();
+    else if (worldId === 'SUB-B') this.buildBonusSublevelB();
   }
 
   // --- MUNDO 1-1 ---
@@ -2207,6 +2727,8 @@ class PlatformerGame {
     this.mysteryBlocks.push(new MysteryBlock(2000, 240, 'shield'));
     this.mysteryBlocks.push(new MysteryBlock(2050, 240, 'coin'));
     this.mysteryBlocks.push(new MysteryBlock(2750, 420, 'coin'));
+    this.mysteryBlocks.push(new MysteryBlock(3650, 420, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(3800, 420, 'shield'));
 
     for (let i = 0; i < 5; i++) this.dataBits.push(new DataBit(560 + i * 36, 450 - Math.sin((i / 4) * Math.PI) * 55));
     for (let i = 0; i < 4; i++) this.dataBits.push(new DataBit(740 + i * 40, 340));
@@ -2221,6 +2743,7 @@ class PlatformerGame {
     this.enemies.push(new GlitchBug(2800, floorY - 38, 130));
 
     this.goalPole = new DataGoalPole(4250, floorY - 380, 380);
+    this.portal = new SublevelPortal(2050, floorY, 'ENTRAR', 'SUB-A');
     this.player.spawnX = 120;
     this.player.spawnY = 460;
     this.player.reset();
@@ -2267,6 +2790,8 @@ class PlatformerGame {
     this.mysteryBlocks.push(new MysteryBlock(1750, 200, 'coin'));
     this.mysteryBlocks.push(new MysteryBlock(2650, 280, 'overclock'));
     this.mysteryBlocks.push(new MysteryBlock(3000, 220, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(1900, 420, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(2850, 220, 'laser'));
 
     for (let i = 0; i < 6; i++) this.dataBits.push(new DataBit(640 + i * 36, 300));
     for (let i = 0; i < 4; i++) this.dataBits.push(new DataBit(1360 + i * 40, 340));
@@ -2283,6 +2808,7 @@ class PlatformerGame {
     this.enemies.push(new SpyDrone(4450, 360, 75, 0.05));
 
     this.goalPole = new DataGoalPole(4950, floorY - 380, 380);
+    this.portal = new SublevelPortal(3900, floorY, 'ENTRAR', 'SUB-B');
     this.player.spawnX = 120;
     this.player.spawnY = 460;
     this.player.reset();
@@ -2322,6 +2848,8 @@ class PlatformerGame {
     this.mysteryBlocks.push(new MysteryBlock(1300, 300, 'shield'));
     this.mysteryBlocks.push(new MysteryBlock(2200, 300, 'laser'));
     this.mysteryBlocks.push(new MysteryBlock(3200, 420, 'overclock'));
+    this.mysteryBlocks.push(new MysteryBlock(3450, 420, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(4320, 420, 'shield'));
 
     for (let i = 0; i < 6; i++) this.dataBits.push(new DataBit(310 + i * 36, 320));
     for (let i = 0; i < 5; i++) this.dataBits.push(new DataBit(1220 + i * 36, 260));
@@ -2335,9 +2863,10 @@ class PlatformerGame {
     this.enemies.push(new SpyDrone(2700, 400, 70, 0.05));
     this.enemies.push(new GlitchBug(3100, floorY - 38, 180));
 
-    this.boss = new BossMegaGlitch(4620, floorY - 110);
+    this.boss = new BossMegaGlitch(4620, floorY - 155);
     this.purgeSwitch = new PurgeBridgeSwitch(5050, floorY - 40);
     this.goalPole = null;
+    this.portal = new SublevelPortal(3100, floorY, 'ENTRAR', 'SUB-B');
 
     this.player.spawnX = 120;
     this.player.spawnY = 460;
@@ -2401,6 +2930,8 @@ class PlatformerGame {
     this.mysteryBlocks.push(new MysteryBlock(2050, 380, 'shield'));
     this.mysteryBlocks.push(new MysteryBlock(2750, 280, 'overclock')); // Estrella en el cielo
     this.mysteryBlocks.push(new MysteryBlock(3750, 200, 'wings'));
+    this.mysteryBlocks.push(new MysteryBlock(1900, 310, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(3230, 340, 'shield'));
 
     // Data-Bits en constelaciones flotantes
     for (let i = 0; i < 7; i++) this.dataBits.push(new DataBit(480 + i * 40, 290 - Math.sin((i / 6) * Math.PI) * 70));
@@ -2421,15 +2952,158 @@ class PlatformerGame {
     this.goalPole = new DataGoalPole(5250, floorY - 380, 380);
     this.boss = null;
     this.purgeSwitch = null;
+    this.portal = new SublevelPortal(4750, floorY, 'ENTRAR', 'SUB-A');
 
     this.player.spawnX = 100;
     this.player.spawnY = 460;
     this.player.reset();
   }
 
-  startLevel() {
+  // --- MUNDO 1-5: EL ARCHIVO DE LAS DECISIONES ---
+  buildLevel5() {
+    this.levelWidth = 6000;
+    this.background = new ParallaxCyberBackground(this.levelWidth, '1-5');
+    this.platforms = [];
+    this.movingPlatforms = [];
+    this.bouncePads = [];
+    this.laserBars = [];
+    this.mysteryBlocks = [];
+    this.dataBits = [];
+    this.enemies = [];
+
+    const floorY = 570;
+    this.platforms.push({ x: 0, y: floorY, width: 900, height: 160 });
+    this.platforms.push({ x: 1080, y: floorY, width: 970, height: 160 });
+    this.platforms.push({ x: 2320, y: floorY, width: 1530, height: 160 });
+    this.platforms.push({ x: 4100, y: floorY, width: 1900, height: 160 });
+
+    const addPlat = (x, y, width) => this.platforms.push({ x, y, width, height: 24 });
+    // Pasarelas entre bóvedas y terminales de archivo.
+    addPlat(800, 425, 170);
+    addPlat(1280, 430, 150);
+    addPlat(1660, 350, 180);
+    addPlat(2070, 420, 180);
+    addPlat(2500, 430, 180);
+    addPlat(2800, 340, 190);
+    addPlat(3260, 390, 200);
+    addPlat(3670, 320, 190);
+    addPlat(3930, 420, 170);
+    addPlat(4450, 400, 180);
+    addPlat(4840, 330, 180);
+    addPlat(5250, 400, 200);
+
+    this.movingPlatforms.push(new MovingPlatform(930, 475, 120, 24, 30, 0, 1.7));
+    this.movingPlatforms.push(new MovingPlatform(2130, 470, 130, 24, 0, 55, 1.5));
+    this.movingPlatforms.push(new MovingPlatform(3860, 465, 130, 24, 45, 0, 1.9));
+
+    this.laserBars.push(new LaserBar(1510, 245, 82, 0.026, 2));
+    this.laserBars.push(new LaserBar(3000, 240, 105, -0.025, 3));
+    this.laserBars.push(new LaserBar(4630, 250, 95, 0.028, 2));
+
+    this.mysteryBlocks.push(new MysteryBlock(520, 420, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(1420, 300, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(2660, 330, 'coin'));
+    this.mysteryBlocks.push(new MysteryBlock(3480, 290, 'overclock'));
+    this.mysteryBlocks.push(new MysteryBlock(4920, 260, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(3350, 330, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(4320, 420, 'laser'));
+
+    for (let i = 0; i < 7; i++) this.dataBits.push(new DataBit(430 + i * 38, 330 - Math.sin((i / 6) * Math.PI) * 55));
+    for (let i = 0; i < 6; i++) this.dataBits.push(new DataBit(1710 + i * 38, 290));
+    for (let i = 0; i < 8; i++) this.dataBits.push(new DataBit(2840 + i * 38, 270 - Math.sin((i / 7) * Math.PI) * 45));
+    for (let i = 0; i < 8; i++) this.dataBits.push(new DataBit(4850 + i * 38, 250));
+
+    this.enemies.push(new GlitchBug(620, floorY - 38, 130));
+    this.enemies.push(new SpyDrone(1380, 320, 90, 0.045));
+    this.enemies.push(new GlitchBug(1770, floorY - 38, 150));
+    this.enemies.push(new PhishingDrone(2550, 130, 230));
+    this.enemies.push(new SpyDrone(3350, 300, 95, 0.05));
+    this.enemies.push(new GlitchBug(3650, floorY - 38, 160));
+    this.enemies.push(new PhishingDrone(4500, 115, 260));
+    this.enemies.push(new SpyDrone(5200, 320, 80, 0.055));
+
+    this.goalPole = new DataGoalPole(5640, floorY - 380, 380);
+    this.boss = null;
+    this.purgeSwitch = null;
+    this.portal = new SublevelPortal(4700, floorY, 'ENTRAR', 'SUB-B');
+    this.player.spawnX = 100;
+    this.player.spawnY = 460;
+    this.player.reset();
+  }
+
+  buildBonusSublevelA() {
+    this.levelWidth = 2250;
+    this.background = new ParallaxCyberBackground(this.levelWidth, 'SUB-A');
+    this.platforms = [];
+    this.movingPlatforms = [];
+    this.bouncePads = [];
+    this.laserBars = [];
+    this.mysteryBlocks = [];
+    this.dataBits = [];
+    this.enemies = [];
+    const floorY = 570;
+    this.platforms.push({ x: 0, y: floorY, width: 600, height: 160 });
+    this.platforms.push({ x: 730, y: floorY, width: 600, height: 160 });
+    this.platforms.push({ x: 1460, y: floorY, width: 790, height: 160 });
+    const addPlat = (x, y, width) => this.platforms.push({ x, y, width, height: 24 });
+    addPlat(450, 420, 160); addPlat(820, 350, 180); addPlat(1120, 430, 160);
+    addPlat(1560, 390, 180); addPlat(1880, 310, 180);
+    this.movingPlatforms.push(new MovingPlatform(610, 490, 110, 22, 90, 0, 1.5));
+    this.laserBars.push(new LaserBar(1040, 245, 82, .028, 2));
+    this.mysteryBlocks.push(new MysteryBlock(360, 420, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(900, 280, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(1510, 420, 'overclock'));
+    this.mysteryBlocks.push(new MysteryBlock(1930, 250, 'laser'));
+    for (let i = 0; i < 20; i++) this.dataBits.push(new DataBit(430 + i * 70, 280 + Math.sin(i * .55) * 45));
+    this.enemies.push(new GlitchBug(810, floorY - 38, 110));
+    this.enemies.push(new SpyDrone(1230, 340, 70, .05));
+    this.enemies.push(new GlitchBug(1640, floorY - 38, 120));
+    this.goalPole = null; this.boss = null; this.purgeSwitch = null;
+    this.portal = new SublevelPortal(2110, floorY, 'SALIR');
+    this.player.spawnX = 100; this.player.spawnY = 474; this.player.reset();
+  }
+
+  buildBonusSublevelB() {
+    this.levelWidth = 2700;
+    this.background = new ParallaxCyberBackground(this.levelWidth, 'SUB-B');
+    this.platforms = [];
+    this.movingPlatforms = [];
+    this.bouncePads = [];
+    this.laserBars = [];
+    this.mysteryBlocks = [];
+    this.dataBits = [];
+    this.enemies = [];
+    const floorY = 570;
+    this.platforms.push({ x: 0, y: floorY, width: 760, height: 160 });
+    this.platforms.push({ x: 920, y: floorY - 35, width: 600, height: 195 });
+    this.platforms.push({ x: 1700, y: floorY, width: 1000, height: 160 });
+    this.platforms.push({ x: 240, y: 410, width: 170, height: 24 });
+    this.platforms.push({ x: 620, y: 330, width: 190, height: 24 });
+    this.platforms.push({ x: 1150, y: 370, width: 180, height: 24 });
+    this.platforms.push({ x: 1830, y: 410, width: 180, height: 24 });
+    this.platforms.push({ x: 2180, y: 330, width: 190, height: 24 });
+    this.movingPlatforms.push(new MovingPlatform(770, 480, 130, 24, 90, 0, 1.8));
+    this.movingPlatforms.push(new MovingPlatform(1510, 430, 130, 24, 0, 80, 1.6));
+    this.laserBars.push(new LaserBar(1370, 245, 95, -.03, 2));
+    this.laserBars.push(new LaserBar(2040, 240, 75, .035, 2));
+    this.mysteryBlocks.push(new MysteryBlock(300, 330, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(1040, 330, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(1880, 330, 'overclock'));
+    for (let i = 0; i < 18; i++) this.dataBits.push(new DataBit(360 + i * 120, 230 + Math.sin(i * .65) * 45));
+    this.enemies.push(new SpyDrone(520, 350, 80, .05));
+    this.enemies.push(new GlitchBug(1030, floorY - 38, 120));
+    this.enemies.push(new PhishingDrone(1780, 130, 200));
+    this.enemies.push(new SpyDrone(2210, 280, 70, .06));
+    this.goalPole = null; this.boss = null; this.purgeSwitch = null;
+    this.portal = new SublevelPortal(2530, floorY, 'SALIR');
+    this.player.spawnX = 100; this.player.spawnY = 474; this.player.reset();
+  }
+
+  startLevel(resetTimer = true) {
     this.isRunning = true;
-    this.timeRemaining = 300;
+    this.runState = 'playing';
+    this.saveProgress();
+    if (resetTimer) this.timeRemaining = 420;
     this.sound.playMusic();
     this.updateHUD();
 
@@ -2439,7 +3113,11 @@ class PlatformerGame {
         this.timeRemaining--;
         document.getElementById('hud-timer').textContent = this.timeRemaining;
         if (this.timeRemaining <= 0) {
-          this.player.takeDamage(this, true);
+          this.player.takeDamage(this);
+          if (this.player.hearts > 0) {
+            this.timeRemaining = 60;
+            this.triggerNexusMsg('¡Se agotó el tiempo! Pierdes una vida y tienes un minuto extra para llegar a la meta.');
+          }
         }
       }
     }, 1000);
@@ -2450,9 +3128,15 @@ class PlatformerGame {
       } else if (this.currentWorld === '1-2') {
         this.triggerNexusMsg('¡MUNDO 1-2! Cuidado con los Drones. ¡Usa las plataformas móviles para cruzar!');
       } else if (this.currentWorld === '1-3') {
-        this.triggerNexusMsg('¡ALERTA MÁXIMA! Has entrado al Núcleo Central. ¡Encuentra el Blaster Cuántico [F] y destruye al Mega-Glitch!');
+        this.triggerNexusMsg('¡ALERTA MÁXIMA! El Guardián Corrupto protege el Núcleo. Consigue el bláster [F] y encuentra una abertura en su armadura.');
       } else if (this.currentWorld === '1-4') {
         this.triggerNexusMsg('¡MUNDO 1-4! La Nube Cuántica Orbital. ¡Encuentra las Botas Cuánticas [🪽] para realizar DOBLE SALTO en el aire!');
+      } else if (this.currentWorld === '1-5') {
+        this.triggerNexusMsg('¡MUNDO 1-5! El Archivo de las Decisiones está bajo ataque. Supera sus bóvedas y ayuda a NEXUS a auditar quién responde por una IA dañina.');
+      } else if (this.currentWorld === 'SUB-A') {
+        this.triggerNexusMsg('CÁMARA SECRETA: recoge Data-Bits y recupera mejoras; usa S / ▼ en el portal azul para volver.');
+      } else if (this.currentWorld === 'SUB-B') {
+        this.triggerNexusMsg('TÚNEL DE DATOS: supera los raíles láser y drones; busca el portal azul de salida.');
       }
     }, 800);
   }
@@ -2475,27 +3159,32 @@ class PlatformerGame {
 
   addBits(count) {
     this.bits += count;
-    document.getElementById('hud-bits-count').textContent = String(this.bits).padStart(2, '0');
-    if (this.bits >= 100) {
+    while (this.bits >= 100) {
       this.bits -= 100;
-      if (this.player.hearts < 3) {
-        this.player.hearts++;
-        this.updateHeartsHUD();
-        this.sound.playPowerup();
-        this.triggerNexusMsg('¡100 Data-Bits alcanzados! Vida regenerada.');
-      }
+      this.addLives(1, '¡100 Data-Bits reunidos! Ganaste una vida extra.');
     }
+    document.getElementById('hud-bits-count').textContent = String(this.bits).padStart(2, '0');
+  }
+
+  addLives(count = 1, message = '') {
+    this.player.hearts += count;
+    this.updateHeartsHUD();
+    this.sound.playPowerup();
+    this.saveProgress();
+    if (message) this.triggerNexusMsg(message);
   }
 
   updateHeartsHUD() {
     const container = document.getElementById('hud-hearts');
-    container.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
-      const span = document.createElement('span');
-      span.className = 'heart ' + (i < this.player.hearts ? 'active' : 'lost');
-      span.textContent = '❤️';
-      container.appendChild(span);
-    }
+    const heart = document.createElement('span');
+    heart.className = 'heart active';
+    heart.textContent = '❤️';
+    heart.setAttribute('aria-hidden', 'true');
+    const count = document.createElement('span');
+    count.className = 'lives-count';
+    count.textContent = `× ${this.player.hearts}`;
+    container.replaceChildren(heart, count);
+    container.setAttribute('aria-label', `${this.player.hearts} vidas`);
   }
 
   updateHUD() {
@@ -2520,6 +3209,8 @@ class PlatformerGame {
 
   onGameOver() {
     this.isRunning = false;
+    this.runState = 'gameover';
+    this.saveProgress();
     clearInterval(this.timeTimer);
     document.getElementById('boss-hud').classList.add('hidden');
     document.getElementById('go-score').textContent = this.score;
@@ -2529,6 +3220,7 @@ class PlatformerGame {
 
   onLevelComplete() {
     this.isRunning = false;
+    this.runState = 'victory';
     clearInterval(this.timeTimer);
     document.getElementById('boss-hud').classList.add('hidden');
 
@@ -2556,26 +3248,36 @@ class PlatformerGame {
       document.getElementById('vic-badge').textContent = '¡MUNDO 1-2 SUPERADO!';
       document.getElementById('vic-title').textContent = 'ESTACIÓN CENTRAL ALCANZADA';
       document.getElementById('vic-sub').textContent = 'El tráfico fue restablecido. El origen de la corrupción proviene del Núcleo Central.';
-      document.getElementById('vic-verdict-text').textContent = 'NEXUS: La fuente del malware ha sido localizada en la Fortaleza del Núcleo Central. Prepárate para la batalla final.';
+      document.getElementById('vic-verdict-text').textContent = 'NEXUS: La fuente del malware está en la Fortaleza del Núcleo Central. Prepárate para la batalla.';
       nextBtn.textContent = '¡ENTRAR A MUNDO 1-3: EL NÚCLEO CENTRAL! ❯';
       nextBtn.style.display = 'inline-block';
       playAgainBtn.style.display = 'none';
     } else if (this.currentWorld === '1-3') {
       document.getElementById('vic-badge').textContent = '¡MUNDO 1-3 SUPERADO!';
-      document.getElementById('vic-title').textContent = 'MEGA-GLITCH DERROTADO';
+      document.getElementById('vic-title').textContent = 'GUARDIÁN CORRUPTO DERROTADO';
       document.getElementById('vic-sub').textContent = 'El malware central fue destruido, pero fragmentos han escapado a la Nube Cuántica Orbital.';
       document.getElementById('vic-verdict-text').textContent = 'NEXUS: ¡Increíble victoria contra el coloso! Pero los restos del virus amenazan los satélites globales. ¡Debemos subir a la Nube!';
       nextBtn.textContent = '¡VOLAR A MUNDO 1-4: LA NUBE CUÁNTICA! ❯';
       nextBtn.style.display = 'inline-block';
       playAgainBtn.style.display = 'none';
+    } else if (this.currentWorld === '1-4') {
+      document.getElementById('vic-badge').textContent = '¡MUNDO 1-4 SUPERADO!';
+      document.getElementById('vic-title').textContent = 'ENLACE ORBITAL RESTABLECIDO';
+      document.getElementById('vic-sub').textContent = 'Los satélites están a salvo. Los registros muestran quién puso en marcha la IA corrupta: el Archivo de las Decisiones.';
+      document.getElementById('vic-verdict-text').textContent = 'NEXUS: Debemos preservar las pruebas y averiguar quién es responsable del daño. El Archivo Central está bajo ataque.';
+      nextBtn.textContent = 'ENTRAR A MUNDO 1-5: EL ARCHIVO DE LAS DECISIONES ❯';
+      nextBtn.style.display = 'inline-block';
+      playAgainBtn.style.display = 'none';
     } else {
-      document.getElementById('vic-badge').textContent = '★★★★ ¡CAMPAÑA ORBITAL COMPLETADA! ★★★★';
+      document.getElementById('vic-badge').textContent = '★★★★ ¡CAMPAÑA COMPLETADA! ★★★★';
       document.getElementById('vic-title').textContent = 'RED GLOBAL LIBERADA Y SEGURA';
-      document.getElementById('vic-sub').textContent = 'Has completado los 4 Mundos. La Inteligencia Artificial y la humanidad ahora avanzan en armonía ética.';
-      document.getElementById('vic-verdict-text').textContent = 'NEXUS: ¡Eres una leyenda, Lucas! Gracias a tu pensamiento crítico, agilidad y principios éticos, todo el planeta está a salvo de la vigilancia masiva.';
+      document.getElementById('vic-sub').textContent = 'Has completado los 5 mundos y expuesto quién debe responder por el uso de una IA dañina.';
+      const correctPrinciples = Object.values(this.ethicsDecisions).filter(Boolean).length;
+      document.getElementById('vic-verdict-text').textContent = `NEXUS: Aplicaste correctamente ${correctPrinciples} de 5 principios de IA responsable. ¡Tu pensamiento crítico ayudó a liberar la red global!`;
       nextBtn.style.display = 'none';
       playAgainBtn.style.display = 'inline-block';
       this.sound.playFanfare();
+      try { localStorage.removeItem('ia-avance-imparable-progress'); } catch { /* opcional */ }
     }
 
     setTimeout(() => {
@@ -2602,6 +3304,7 @@ class PlatformerGame {
   loop(timestamp) {
     if (this.isRunning) {
       this.player.update(this.input, this);
+      this.checkEthicsChallenge();
       this.movingPlatforms.forEach(p => p.update());
       this.bouncePads.forEach(bp => bp.update());
       this.laserBars.forEach(lb => lb.update());
@@ -2625,12 +3328,94 @@ class PlatformerGame {
       }
 
       this.dataBits.forEach(b => b.update());
+      this.mysteryBlocks.forEach(block => block.update(this.player));
       this.particles.update();
       this.updateCamera();
     }
 
     this.render();
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  checkEthicsChallenge() {
+    const lessons = {
+      '1-1': { x: 720, title: 'PRIVACIDAD • MÍNIMO NECESARIO', question: 'Una app pide ubicación, contactos y micrófono para mostrar el clima. ¿Qué permiso conviene conceder?', options: ['Solo ubicación mientras uso la app', 'Todos, por si acaso'], correct: 0, lesson: 'Pedir solo los datos necesarios reduce la exposición.', points: 300, benefits: { shield: true }, reward: '+300 puntos y un Firewall que bloquea un impacto.' },
+      '1-2': { x: 1180, title: 'SESGO • DATOS REPRESENTATIVOS', question: 'El sistema de transporte predice retrasos peor en algunos barrios porque casi no tiene datos de esas zonas. ¿Qué mejora ayuda más?', options: ['Incluir datos diversos y revisar errores por zona', 'Usar el mismo modelo sin revisar resultados'], correct: 0, lesson: 'Los datos incompletos pueden producir resultados desiguales. Auditar por grupos ayuda a detectar el sesgo.', points: 500, benefits: { shield: true, lives: 1 }, reward: '+500 puntos, Firewall y una vida extra.' },
+      '1-3': { x: 3300, title: 'EXPLICABILIDAD • REVISAR LA DECISIÓN', question: 'Una IA bloquea una cuenta y no explica por qué. ¿Qué debería ofrecer un sistema responsable?', options: ['Una razón comprensible y una vía de revisión', 'Solo un puntaje secreto'], correct: 0, lesson: 'Las personas necesitan entender y cuestionar decisiones automatizadas.', points: 500, benefits: { laser: true, seconds: 30 }, reward: '+500 puntos, recuperas el Bláster y ganas 30 segundos.' },
+      '1-4': { x: 3300, title: 'USO RESPONSABLE • SUPERVISIÓN HUMANA', question: 'Una IA detecta una posible amenaza, pero la evidencia es incierta. ¿Qué es lo más responsable?', options: ['Pedir revisión humana antes de tomar una medida grave', 'Dejar que actúe automáticamente sin revisión'], correct: 0, lesson: 'La supervisión humana importa cuando hay incertidumbre y consecuencias importantes.', points: 500, benefits: { overclock: true, lives: 1 }, reward: '+500 puntos, Overclock temporal y una vida extra.' },
+      '1-5': { x: 3200, title: 'RESPONSABILIDAD • RENDICIÓN DE CUENTAS', question: 'Un sistema de IA causa un daño porque la organización lo desplegó sin controles adecuados. ¿Qué corresponde hacer?', options: ['La organización debe explicar lo ocurrido, corregir el daño y responder por el sistema', 'Culpar a la IA como si pudiera asumir la responsabilidad'], correct: 0, lesson: 'La IA no reemplaza la responsabilidad de las personas y organizaciones que la diseñan, despliegan y supervisan.', points: 1000, benefits: { shield: true, laser: true, lives: 2 }, reward: '+1000 puntos, Firewall, Bláster y dos vidas extra.' }
+    };
+    const lesson = lessons[this.currentWorld];
+    if (!lesson || this.ethicsSeen.has(this.currentWorld) || this.player.x < lesson.x) return;
+
+    // En los tramos con abismos, si Lucas llega saltando al reto, esperamos a que aterrice
+    // y lo mantenemos sobre la plataforma segura más cercana antes del panel.
+    const safeEdges = { '1-3': 3650, '1-4': 3740, '1-5': 3750 };
+    const safeEdgeX = safeEdges[this.currentWorld];
+    if (safeEdgeX && !this.player.onGround) {
+      if (this.player.x > safeEdgeX) {
+        this.player.x = safeEdgeX;
+        this.player.vx = 0;
+      }
+      return;
+    }
+
+    this.ethicsSeen.add(this.currentWorld);
+    this.isRunning = false;
+    this.runState = 'ethics';
+    this.player.vx = 0;
+    this.player.vy = 0;
+    this.input.left = this.input.right = this.input.jump = false;
+    document.getElementById('ethics-world').textContent = `NEXUS • MUNDO ${this.currentWorld}`;
+    document.getElementById('ethics-title').textContent = lesson.title;
+    document.getElementById('ethics-question').textContent = lesson.question;
+    const choices = document.getElementById('ethics-choices');
+    const feedback = document.getElementById('ethics-feedback');
+    const continueButton = document.getElementById('btn-ethics-continue');
+    feedback.textContent = '';
+    continueButton.classList.add('hidden');
+    choices.replaceChildren();
+    lesson.options.forEach((option, index) => {
+      const button = document.createElement('button');
+      button.className = 'btn-cyber ethics-choice';
+      button.textContent = option;
+      button.addEventListener('click', () => {
+        choices.querySelectorAll('button').forEach((choice) => { choice.disabled = true; });
+        const correct = index === lesson.correct;
+        this.ethicsDecisions[this.currentWorld] = correct;
+        if (correct) {
+          this.addScore(lesson.points);
+          if (lesson.benefits.shield) this.player.hasShield = true;
+          if (lesson.benefits.laser) this.player.hasLaser = true;
+          if (lesson.benefits.overclock) this.player.activateOverclock();
+          if (lesson.benefits.seconds) {
+            this.timeRemaining += lesson.benefits.seconds;
+            document.getElementById('hud-timer').textContent = this.timeRemaining;
+          }
+          if (lesson.benefits.lives) this.addLives(lesson.benefits.lives, `¡Ganaste ${lesson.benefits.lives} vida${lesson.benefits.lives > 1 ? 's' : ''} extra${lesson.benefits.lives > 1 ? 's' : ''}!`);
+          if (!lesson.benefits.lives) this.sound.playPowerup();
+          feedback.textContent = `${lesson.lesson} ${lesson.reward}`;
+        } else {
+          this.score = Math.max(0, this.score - 500);
+          document.getElementById('hud-score').textContent = String(this.score).padStart(6, '0');
+          this.player.hearts--;
+          this.player.invulnerableTimer = 1.8;
+          this.updateHeartsHUD();
+          this.sound.playHurt();
+          feedback.textContent = `Respuesta incorrecta: pierdes 500 puntos y una vida. ${lesson.lesson} Inténtalo de nuevo en otra oportunidad.`;
+          this.saveProgress();
+          if (this.player.hearts <= 0) {
+            document.getElementById('screen-ethics').classList.add('hidden');
+            this.onGameOver();
+            return;
+          }
+        }
+        this.saveProgress();
+        continueButton.classList.remove('hidden');
+      });
+      choices.append(button);
+    });
+    document.getElementById('screen-ethics').classList.remove('hidden');
   }
 
   render() {
@@ -2660,6 +3445,7 @@ class PlatformerGame {
 
     // 8. Meta o Interruptor
     if (this.goalPole) this.goalPole.draw(ctx, this.cameraX);
+    if (this.portal) this.portal.draw(ctx, this.cameraX);
     if (this.purgeSwitch) this.purgeSwitch.draw(ctx, this.cameraX);
 
     // 9. Jefe Final
@@ -2683,6 +3469,7 @@ class PlatformerGame {
     const isLevel2 = this.currentWorld === '1-2';
     const isLevel3 = this.currentWorld === '1-3';
     const isLevel4 = this.currentWorld === '1-4';
+    const isLevel5 = this.currentWorld === '1-5';
 
     this.platforms.forEach(plat => {
       const rx = plat.x - this.cameraX;
@@ -2696,6 +3483,7 @@ class PlatformerGame {
         if (isLevel2) { fill = '#120a22'; neon = '#ff0055'; }
         if (isLevel3) { fill = '#080004'; neon = '#ff0055'; }
         if (isLevel4) { fill = '#031936'; neon = '#38bdf8'; }
+        if (isLevel5) { fill = '#14101d'; neon = '#f59e0b'; }
 
         ctx.fillStyle = fill;
         ctx.fillRect(rx, plat.y, plat.width, plat.height);
@@ -2716,7 +3504,7 @@ class PlatformerGame {
         // Servidor vertical
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(rx, plat.y, plat.width, plat.height);
-        ctx.strokeStyle = isLevel4 ? '#38bdf8' : (isLevel3 ? '#ff0055' : (isLevel2 ? '#ff0055' : '#00f3ff'));
+        ctx.strokeStyle = isLevel5 ? '#f59e0b' : (isLevel4 ? '#38bdf8' : (isLevel3 ? '#ff0055' : (isLevel2 ? '#ff0055' : '#00f3ff')));
         ctx.lineWidth = 2;
         ctx.strokeRect(rx, plat.y, plat.width, plat.height);
 
@@ -2726,17 +3514,17 @@ class PlatformerGame {
         ctx.strokeRect(rx - 4, plat.y, plat.width + 8, 12);
       } else {
         // Plataformas suspendidas
-        ctx.fillStyle = isLevel4 ? 'rgba(7, 30, 60, 0.92)' : (isLevel3 ? 'rgba(20, 5, 12, 0.95)' : 'rgba(15, 23, 42, 0.9)');
+        ctx.fillStyle = isLevel5 ? 'rgba(25, 20, 30, 0.96)' : (isLevel4 ? 'rgba(7, 30, 60, 0.92)' : (isLevel3 ? 'rgba(20, 5, 12, 0.95)' : 'rgba(15, 23, 42, 0.9)'));
         ctx.fillRect(rx, plat.y, plat.width, plat.height);
 
-        const borderCol = isLevel4 ? '#38bdf8' : (isLevel3 ? '#ff0055' : (isLevel2 ? '#00f3ff' : '#b5179e'));
+        const borderCol = isLevel5 ? '#f59e0b' : (isLevel4 ? '#38bdf8' : (isLevel3 ? '#ff0055' : (isLevel2 ? '#00f3ff' : '#b5179e')));
         ctx.strokeStyle = borderCol;
         ctx.lineWidth = 2;
         ctx.shadowColor = borderCol;
         ctx.shadowBlur = 8;
         ctx.strokeRect(rx, plat.y, plat.width, plat.height);
 
-        ctx.fillStyle = isLevel4 ? '#10b981' : (isLevel3 ? '#ffd700' : (isLevel2 ? '#ff0055' : '#00f3ff'));
+        ctx.fillStyle = isLevel5 ? '#10b981' : (isLevel4 ? '#10b981' : (isLevel3 ? '#ffd700' : (isLevel2 ? '#ff0055' : '#00f3ff')));
         ctx.fillRect(rx, plat.y, plat.width, 3);
       }
       ctx.restore();

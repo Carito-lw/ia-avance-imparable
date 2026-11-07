@@ -1,7 +1,8 @@
 # IA: Avance Imparable — Edición Web Nativa
 
-Videojuego 2D narrativo y educativo sobre Inteligencia Artificial, Privacidad y Ciberseguridad.
-Desarrollado con **HTML5 Canvas, CSS3 Cyberpunk y JavaScript Moderno (Vanilla ES6+)**, sin motores pesados (ni Unity ni Godot).
+Videojuego arcade 2D educativo sobre Inteligencia Artificial, privacidad, sesgos y uso responsable.
+Corre, salta, esquiva malware y derrota jefes mientras tomas decisiones breves que explican conceptos reales y afectan las recompensas de la partida.
+Desarrollado con **HTML5 Canvas, CSS3 y JavaScript (Vanilla ES6+)**.
 
 ---
 
@@ -21,26 +22,31 @@ Tienes dos formas directas de jugarlo:
 ## 🎮 Controles
 
 * **Mover a Lucas:** Teclas `A` / `D` o las `Flechas Izquierda / Derecha`.
-* **Saltar:** Barra `Espaciadora` o `Flecha Arriba`.
-* **Interactuar:** Tecla `E` (recoger smartphone, abrir cerradura, investigar transporte).
-* **Decisiones y Menús:** Clic con el `Mouse` sobre los diálogos, botones y acertijos.
+* **Saltar:** `Espacio`, `W` o `Flecha Arriba` (doble salto al conseguir las botas cuánticas en el mundo 1-4).
+* **Disparar:** `F` o `E` cuando tengas el bláster.
+* **Pausar / continuar:** `P`.
+* **Subniveles secretos:** acércate al portal verde y pulsa `S` o `Flecha Abajo`; usa el portal azul para salir.
+* **Móvil o pantalla táctil:** gira el teléfono a horizontal y usa los botones en pantalla, incluido `▼` para entrar o salir de portales.
+* **Decisiones educativas y menús:** clic o toque sobre las opciones.
 * **Sonido:** Botón 🔊 en la esquina superior derecha para silenciar o reactivar el audio.
 
 ---
 
 ## 📦 Contenido incluido
 
-* **Nivel 01 — El Despertar:**
-  * Cinemática de inicio y controles.
-  * Habitación gamer interactiva con físicas 2D y animaciones por spritesheet de Lucas (Idle, Caminar, Salto).
-  * Recogida del smartphone con audio y resplandor dinámico.
-  * Diálogo interactivo con NEXUS: Dilema ético de privacidad (*Permitir todo* vs *Permitir solo lo necesario*).
-  * Desafío de la cerradura inteligente (protocolo de privacidad y credenciales).
-  * Cierre cinematográfico con desvanecimiento, reducción de volumen musical y efecto mecanografía.
+* **Mundo 1-1 — La Red Local:** elección sobre permisos y principio de recopilar solo los datos necesarios.
+* **Mundo 1-2 — La Ciudad Conectada:** detección del sesgo causado por datos poco representativos.
+* **Mundo 1-3 — El Núcleo Central:** explicabilidad, derecho a revisar decisiones automatizadas y batalla contra el Guardián Corrupto, una IA blindada que protege el núcleo.
+* **Mundo 1-4 — La Nube Cuántica y Estación Orbital:** uso responsable y supervisión humana.
+* **Mundo 1-5 — El Archivo de las Decisiones:** plataformas de bóveda, láseres y drones; responsabilidad y rendición de cuentas cuando una IA causa daño.
+* Las decisiones correctas dan recompensas útiles; cada opción muestra una explicación para aprender sin salir de la partida.
+* Una respuesta correcta puede dar Firewall, Bláster, tiempo, Overclock y vidas extra. Una respuesta incorrecta resta 500 puntos y una vida.
+* Las vidas no tienen un tope de tres: se acumulan entre mundos, y cada 100 Data-Bits concede una vida. El contador del HUD muestra el total.
+* Los cubos de Bláster ⚡, Firewall 🛡 y Overclock ★ vuelven a activarse tras un breve tiempo cuando pierdes la mejora. Al recibir un impacto sin Firewall, Lucas pierde el Bláster y puede recuperarlo en otro cubo ⚡.
+* Hay dos subniveles opcionales: la **Cámara Secreta** y el **Túnel de Datos**. Conservan el estado del mundo principal al entrar y volver; las mejoras y Data-Bits que recojas se suman a la campaña.
+* Cada mundo da 7 minutos. Si el tiempo se agota, pierdes una vida y recibes un minuto adicional.
+* El progreso y las decisiones de la campaña se guardan en este navegador y se retoman al iniciar. “Jugar campaña completa de nuevo” borra ese progreso.
 
-* **Nivel 02 — La Ciudad Conectada:**
-  * Escenario panorámico de la ciudad inteligente.
-  * Kiosko de parada inteligente con alerta de fallos en tiempo real.
-  * Consulta y auditoría de la tabla de accesos de pasajeros (P001 - P006).
-  * Acertijo de sesgo algorítmico y explicabilidad de la IA asistido por NEXUS.
-  * Pantalla de victoria con reporte de decisiones éticas de Lucas.
+## Ampliar la campaña
+
+Los mundos se construyen en `game.js` mediante `buildLevel1` a `buildLevel5`, y se seleccionan desde `loadLevel`. Para agregar un mundo: crea su función `buildLevelN`, registra su identificador en `loadLevel`, añade su reto educativo en `checkEthicsChallenge`, y actualiza el mapa de avance y los textos de victoria. Los activos de imagen y audio están en `assets/`.

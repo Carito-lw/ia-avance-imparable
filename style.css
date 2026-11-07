@@ -107,6 +107,24 @@ body, html {
   text-shadow: 2px 2px 0px #000, 0 0 10px rgba(0, 243, 255, 0.6);
 }
 
+.ocean-controls-hint {
+  position: absolute;
+  z-index: 24;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border: 1px solid rgba(103, 232, 249, .7);
+  border-radius: 999px;
+  background: rgba(3, 30, 50, .78);
+  box-shadow: 0 0 16px rgba(34, 211, 238, .3);
+  color: #cffafe;
+  font: 700 11px var(--font-mono);
+  letter-spacing: .7px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .hud-item {
   display: flex;
   flex-direction: column;
@@ -711,6 +729,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   .lives-count { font-size: 11px; }
   .nexus-comm { top: 54px; right: 8px; width: min(72%, 330px); padding: 7px 9px; }
   .nexus-comm-msg { font-size: 12px; }
+  .ocean-controls-hint { top: 48px; left: 50%; font-size: 9px; padding: 5px 8px; }
   .intro-card, .victory-card { padding: 16px 14px 20px; max-height: 94%; overflow-y: auto; }
   .intro-cover { width: calc(100% + 28px); height: clamp(170px, 37vw, 260px); margin: -16px -14px 0; }
   .intro-cover-copy { max-width: 72%; padding: 16px; }

@@ -1,10 +1,11 @@
 /**
- * IA: AVANCE IMPARABLE — CYBER PLATFORMER (CAMPAÑA ARCADE DE 5 MUNDOS)
+ * IA: AVANCE IMPARABLE — CYBER PLATFORMER (CAMPAÑA ARCADE DE 6 MUNDOS)
  * Mundo 1-1: La Red Local (Fundamentos y Pisotón)
  * Mundo 1-2: La Ciudad Conectada (Drones y Plataformas Móviles)
  * Mundo 1-3: El Núcleo Central (Bláster Láser y Guardián Corrupto)
  * Mundo 1-4: La Nube Cuántica & Estación Orbital (Doble Salto, Trampolines, Barras Láser y Phishing Drones)
  * Mundo 1-5: El Archivo de las Decisiones (Auditoría, responsabilidad y seguridad de datos)
+ * Mundo 1-6: El Abismo de Datos (Privacidad, minimización de datos y ecosistemas marinos)
  */
 
 // --- CONFIGURACIÓN PRINCIPAL ---
@@ -1216,6 +1217,95 @@ class SpyDrone {
   }
 }
 
+class SeaGlitchFish {
+  constructor(x, y, patrolDist = 130, speed = 1.2) {
+    this.startX = x;
+    this.x = x;
+    this.baseY = y;
+    this.y = y;
+    this.width = 58;
+    this.height = 38;
+    this.patrolDist = patrolDist;
+    this.vx = -speed;
+    this.phase = Math.random() * Math.PI * 2;
+    this.alive = true;
+    this.squished = false;
+    this.squishTimer = 0;
+  }
+
+  update() {
+    if (!this.alive) { this.squishTimer += 1 / 60; return; }
+    this.x += this.vx;
+    this.phase += .08;
+    this.y = this.baseY + Math.sin(this.phase) * 24;
+    if (this.x < this.startX - this.patrolDist) { this.x = this.startX - this.patrolDist; this.vx = Math.abs(this.vx); }
+    else if (this.x > this.startX + this.patrolDist) { this.x = this.startX + this.patrolDist; this.vx = -Math.abs(this.vx); }
+  }
+
+  stomp() { this.alive = false; this.squished = true; }
+
+  draw(ctx, cameraX) {
+    if (!this.alive && this.squishTimer > .45) return;
+    const rx = this.x - cameraX, ry = this.y;
+    ctx.save();
+    if (this.squished) {
+      ctx.fillStyle = 'rgba(34, 211, 238, .55)';
+      ctx.beginPath(); ctx.ellipse(rx + this.width / 2, ry + 30, 24, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore(); return;
+    }
+    ctx.translate(rx + this.width / 2, ry + this.height / 2);
+    if (this.vx > 0) ctx.scale(-1, 1);
+    const flicker = Math.sin(this.phase * 7) > .55;
+    ctx.shadowColor = flicker ? '#fb7185' : '#22d3ee'; ctx.shadowBlur = 15;
+    ctx.fillStyle = '#0e7490'; ctx.beginPath(); ctx.ellipse(0, 0, 21, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = flicker ? '#fb7185' : '#22d3ee';
+    ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(-31, -13); ctx.lineTo(-28, 1); ctx.lineTo(-31, 14); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-2, -10); ctx.lineTo(8, -19); ctx.lineTo(12, -7); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(11, -4, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(12, -4, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fda4af'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(14, 7); ctx.lineTo(21, 5); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class ElectricJellyfish {
+  constructor(x, y, rangeY = 55, speed = .045) {
+    this.x = x; this.baseY = y; this.y = y;
+    this.width = 48; this.height = 58;
+    this.rangeY = rangeY; this.speed = speed;
+    this.phase = Math.random() * Math.PI * 2;
+    this.alive = true; this.squished = false; this.squishTimer = 0;
+  }
+
+  update() {
+    if (!this.alive) { this.squishTimer += 1 / 60; return; }
+    this.phase += this.speed;
+    this.y = this.baseY + Math.sin(this.phase) * this.rangeY;
+  }
+
+  stomp() { this.alive = false; this.squished = true; }
+
+  draw(ctx, cameraX) {
+    if (!this.alive && this.squishTimer > .45) return;
+    const x = this.x - cameraX, y = this.y;
+    ctx.save();
+    if (this.squished) {
+      ctx.fillStyle = 'rgba(232, 121, 249, .5)'; ctx.beginPath(); ctx.ellipse(x + 24, y + 48, 20, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore(); return;
+    }
+    const pulse = .65 + (Math.sin(this.phase * 3) + 1) * .18;
+    ctx.strokeStyle = `rgba(240, 171, 252, ${pulse})`; ctx.lineWidth = 3;
+    for (let i = 0; i < 4; i++) {
+      const tx = x + 10 + i * 10, sway = Math.sin(this.phase * 2 + i) * 5;
+      ctx.beginPath(); ctx.moveTo(tx, y + 33); ctx.quadraticCurveTo(tx + sway, y + 44, tx - sway, y + 57); ctx.stroke();
+    }
+    ctx.fillStyle = '#c026d3'; ctx.shadowColor = '#e879f9'; ctx.shadowBlur = 18;
+    ctx.beginPath(); ctx.ellipse(x + 24, y + 23, 22, 19, 0, Math.PI, 0); ctx.lineTo(x + 46, y + 25); ctx.quadraticCurveTo(x + 24, y + 43, x + 2, y + 25); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(x + 15, y + 21, 4, 5); ctx.fillRect(x + 29, y + 21, 4, 5);
+    ctx.restore();
+  }
+}
+
 class BossMegaGlitch {
   constructor(x, y) {
     this.x = x;
@@ -1590,6 +1680,7 @@ class MarioLucas {
 
     this.animTime = 0;
     this.walkFrame = 0;
+    this.swimBubbleTimer = 0;
 
     this.climbingGoal = false;
     this.goalCompleted = false;
@@ -1605,6 +1696,7 @@ class MarioLucas {
     this.overclockTimer = 0;
     this.canDoubleJump = false;
     this.invulnerableTimer = 0;
+    this.swimBubbleTimer = 0;
     this.climbingGoal = false;
     this.goalCompleted = false;
   }
@@ -1652,17 +1744,19 @@ class MarioLucas {
     }
 
     // 1. Movimiento horizontal
-    const maxSpeed = this.isOverclocked ? OVERCLOCK_MAX_SPEED : BASE_MAX_SPEED;
+    const underwater = game.currentWorld === '1-6';
+    const maxSpeed = (this.isOverclocked ? OVERCLOCK_MAX_SPEED : BASE_MAX_SPEED) * (underwater ? .82 : 1);
+    const acceleration = RUN_ACCEL * (underwater ? .68 : 1) * (this.isOverclocked ? 1.4 : 1);
     if (input.left) {
-      this.vx -= RUN_ACCEL * (this.isOverclocked ? 1.4 : 1);
+      this.vx -= acceleration;
       if (this.vx < -maxSpeed) this.vx = -maxSpeed;
       this.facing = -1;
     } else if (input.right) {
-      this.vx += RUN_ACCEL * (this.isOverclocked ? 1.4 : 1);
+      this.vx += acceleration;
       if (this.vx > maxSpeed) this.vx = maxSpeed;
       this.facing = 1;
     } else {
-      this.vx *= FRICTION;
+      this.vx *= underwater ? .94 : FRICTION;
       if (Math.abs(this.vx) < 0.15) this.vx = 0;
     }
 
@@ -1679,40 +1773,59 @@ class MarioLucas {
       this.coyoteTime--;
     }
 
-    if (input.jumpJustPressed) {
-      // Consumir el evento de salto en el primer frame: si quedara activo,
-      // Lucas volvería a saltar cada vez que toca el suelo.
-      input.jumpJustPressed = false;
-      if (this.coyoteTime > 0) {
-        this.vy = JUMP_FORCE_INITIAL;
-        this.isJumping = true;
-        this.jumpFrames = 0;
+    if (underwater) {
+      // En el océano, arriba es una brazada y abajo sirve para bucear.
+      if (input.jumpJustPressed) {
+        input.jumpJustPressed = false;
+        this.vy = Math.max(this.vy - 3.4, -5.2);
         this.onGround = false;
-        this.coyoteTime = 0;
         game.sound.playJump();
-      } else if (this.hasWings && this.canDoubleJump) {
-        // ¡DOBLE SALTO CUÁNTICO!
-        this.vy = JUMP_FORCE_INITIAL * 0.95;
-        this.isJumping = true;
-        this.jumpFrames = 0;
-        this.canDoubleJump = false;
-        game.sound.playDoubleJump();
-        game.particles.emit(this.x + this.width / 2, this.y + this.height, 12, '#10b981');
       }
-    }
+      if (input.jump) this.vy -= .19;
+      if (input.down) this.vy += .22;
+      this.vy += .025; // Flotabilidad: al soltar los controles, Lucas desciende despacio.
+      this.vy *= .985;
+      this.vy = Math.max(-5.2, Math.min(4.2, this.vy));
+      this.isJumping = false;
 
-    if (this.isJumping) {
-      if (input.jump && this.jumpFrames < MAX_JUMP_FRAMES) {
-        this.vy += JUMP_HOLD_BOOST;
-        this.jumpFrames++;
-      } else {
-        this.isJumping = false;
+      this.swimBubbleTimer -= 1 / 60;
+      if ((input.jump || input.down) && this.swimBubbleTimer <= 0) {
+        game.particles.emit(this.x + this.width / 2, this.y + this.height / 2, 1, '#a5f3fc');
+        this.swimBubbleTimer = .16;
       }
-    }
+    } else {
+      if (input.jumpJustPressed) {
+        // Consumir el evento en el primer cuadro para evitar saltos automáticos al aterrizar.
+        input.jumpJustPressed = false;
+        if (this.coyoteTime > 0) {
+          this.vy = JUMP_FORCE_INITIAL;
+          this.isJumping = true;
+          this.jumpFrames = 0;
+          this.onGround = false;
+          this.coyoteTime = 0;
+          game.sound.playJump();
+        } else if (this.hasWings && this.canDoubleJump) {
+          this.vy = JUMP_FORCE_INITIAL * .95;
+          this.isJumping = true;
+          this.jumpFrames = 0;
+          this.canDoubleJump = false;
+          game.sound.playDoubleJump();
+          game.particles.emit(this.x + this.width / 2, this.y + this.height, 12, '#10b981');
+        }
+      }
 
-    // 3. Gravedad
-    this.vy += GRAVITY;
-    if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
+      if (this.isJumping) {
+        if (input.jump && this.jumpFrames < MAX_JUMP_FRAMES) {
+          this.vy += JUMP_HOLD_BOOST;
+          this.jumpFrames++;
+        } else {
+          this.isJumping = false;
+        }
+      }
+
+      this.vy += GRAVITY;
+      if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
+    }
 
     // 4. Movimiento y colisiones
     this.x += this.vx;
@@ -1725,6 +1838,12 @@ class MarioLucas {
     }
 
     this.y += this.vy;
+    if (underwater) {
+      const waterTop = 28;
+      const waterBottom = CANVAS_HEIGHT - this.height - 22;
+      if (this.y < waterTop) { this.y = waterTop; this.vy = Math.max(0, this.vy); }
+      if (this.y > waterBottom) { this.y = waterBottom; this.vy = Math.min(0, this.vy); }
+    }
     this.onGround = false;
     this.resolveCollisionsY(game.platforms, game);
     this.resolveMovingPlatforms(game.movingPlatforms);
@@ -1902,7 +2021,7 @@ class MarioLucas {
 
         if (this.vy > 0 && this.y + this.height <= enemy.y + 24) {
           enemy.stomp();
-          this.vy = STOMP_BOUNCE;
+          this.vy = game.currentWorld === '1-6' ? -4.7 : STOMP_BOUNCE;
           this.isJumping = false;
           game.sound.playStomp();
           game.addScore(200);
@@ -2071,7 +2190,7 @@ class MarioLucas {
 }
 
 // ========================================================
-// PARALLAX BACKGROUND SYSTEM (5 MUNDOS)
+// PARALLAX BACKGROUND SYSTEM (CAMPAÑA Y SUBNIVELES)
 // ========================================================
 class ParallaxCyberBackground {
   constructor(levelWidth, worldNum = '1-1') {
@@ -2165,6 +2284,92 @@ class ParallaxCyberBackground {
     if (worldNum === '1-4') {
       for (let i = 0; i < 4; i++) this.orbitalSatellites.push({ x: i * 1550 + 320, y: 115 + (i % 2) * 115, phase: i * 1.4, scale: .65 + (i % 3) * .2 });
     }
+
+    this.oceanBubbles = [];
+    this.oceanReefs = [];
+    this.oceanFish = [];
+    if (worldNum === '1-6') {
+      for (let i = 0; i < 90; i++) this.oceanBubbles.push({ x: Math.random() * levelWidth, y: 70 + Math.random() * 560, r: 2 + Math.random() * 6, phase: Math.random() * Math.PI * 2 });
+      for (let i = 0; i < 24; i++) this.oceanReefs.push({ x: i * 290 + Math.random() * 120, h: 55 + Math.random() * 120, color: i % 3 === 0 ? '#145c75' : (i % 3 === 1 ? '#124e61' : '#183d5b') });
+      const fishColors = ['#67e8f9', '#f0abfc', '#fde68a', '#86efac'];
+      for (let i = 0; i < 54; i++) this.oceanFish.push({ x: Math.random() * levelWidth, y: 120 + Math.random() * 390, size: 8 + Math.random() * 13, phase: Math.random() * Math.PI * 2, direction: i % 2 ? 1 : -1, color: fishColors[i % fishColors.length] });
+    }
+  }
+
+  drawUnderwater(ctx, cameraX, time) {
+    // Rayos que descienden desde la superficie.
+    ctx.save();
+    for (let i = 0; i < 8; i++) {
+      const x = (i * 210 - cameraX * .12 + (time * 8) % 210 + CANVAS_WIDTH) % (CANVAS_WIDTH + 240) - 120;
+      const sway = Math.sin(time * .45 + i) * 22;
+      ctx.fillStyle = `rgba(45, 212, 191, ${.025 + (Math.sin(time + i) + 1) * .012})`;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 72, 0); ctx.lineTo(x + 175 + sway, 510); ctx.lineTo(x - 50 + sway, 510); ctx.closePath(); ctx.fill();
+    }
+
+    // Formaciones de roca y corales en capas de profundidad.
+    this.oceanReefs.forEach((reef, i) => {
+      const x = reef.x - cameraX * .2;
+      if (x < -180 || x > CANVAS_WIDTH + 180) return;
+      ctx.fillStyle = reef.color;
+      ctx.globalAlpha = .46;
+      ctx.beginPath();
+      ctx.moveTo(x - 90, 570); ctx.lineTo(x - 64, 510 - reef.h * .35); ctx.lineTo(x - 24, 535 - reef.h);
+      ctx.lineTo(x + 12, 500 - reef.h * .6); ctx.lineTo(x + 45, 548 - reef.h * .92); ctx.lineTo(x + 88, 520 - reef.h * .25);
+      ctx.lineTo(x + 120, 570); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = i % 2 ? 'rgba(45, 212, 191, .42)' : 'rgba(232, 121, 249, .34)';
+      ctx.lineWidth = 3; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 12;
+      for (let branch = 0; branch < 3; branch++) {
+        const bx = x - 20 + branch * 25;
+        ctx.beginPath(); ctx.moveTo(bx, 562); ctx.quadraticCurveTo(bx - 9, 535, bx + Math.sin(time + i + branch) * 8, 510 - branch * 8); ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    });
+
+    // Cápsulas de servidores hundidos, como ruinas del arrecife de datos.
+    for (let i = 0; i < 5; i++) {
+      const x = 360 + i * 1320 - cameraX * .32;
+      if (x < -180 || x > CANVAS_WIDTH + 180) continue;
+      const y = 350 + (i % 2) * 45;
+      ctx.fillStyle = 'rgba(4, 24, 43, .72)'; ctx.strokeStyle = 'rgba(34, 211, 238, .42)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.roundRect(x, y, 150, 210, [50, 50, 10, 10]); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x + 75, y + 8, 75, 28, 0, Math.PI, 0); ctx.stroke();
+      for (let row = 0; row < 5; row++) {
+        const pulse = .35 + (Math.sin(time * 2 + row + i) + 1) * .2;
+        ctx.fillStyle = `rgba(45, 212, 191, ${pulse})`;
+        ctx.fillRect(x + 24, y + 48 + row * 28, 102, 5);
+        ctx.fillStyle = 'rgba(232, 121, 249, .52)'; ctx.fillRect(x + 31 + (row % 3) * 18, y + 58 + row * 28, 7, 8);
+      }
+    }
+
+    // Cardúmenes de peces pequeños atraviesan el fondo en distintas capas.
+    this.oceanFish.forEach((fish, i) => {
+      const drift = Math.sin(time * .7 + fish.phase) * 26;
+      const x = fish.x - cameraX * .3 + drift;
+      const y = fish.y + Math.sin(time * 1.4 + fish.phase) * 13;
+      if (x < -40 || x > CANVAS_WIDTH + 40) return;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(fish.direction, 1);
+      ctx.globalAlpha = .48 + (i % 4) * .1;
+      ctx.fillStyle = fish.color;
+      ctx.shadowColor = fish.color; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.ellipse(0, 0, fish.size, fish.size * .56, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-fish.size * .7, 0); ctx.lineTo(-fish.size * 1.55, -fish.size * .62); ctx.lineTo(-fish.size * 1.55, fish.size * .62); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, -fish.size * .36); ctx.lineTo(fish.size * .28, -fish.size * .88); ctx.lineTo(fish.size * .62, -fish.size * .28); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e0f2fe'; ctx.beginPath(); ctx.arc(fish.size * .48, -fish.size * .08, Math.max(1.5, fish.size * .11), 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+
+    // Burbujas que suben en primer plano.
+    this.oceanBubbles.forEach((bubble, i) => {
+      const x = bubble.x - cameraX * .42;
+      if (x < -20 || x > CANVAS_WIDTH + 20) return;
+      const y = ((bubble.y - time * (12 + bubble.r * 2) + Math.sin(time + bubble.phase) * 10) % 620 + 620) % 620;
+      ctx.strokeStyle = `rgba(165, 243, 252, ${.28 + (i % 4) * .08})`;
+      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, bubble.r, 0, Math.PI * 2); ctx.stroke();
+    });
+    ctx.restore();
   }
 
   draw(ctx, cameraX) {
@@ -2178,6 +2383,10 @@ class ParallaxCyberBackground {
       skyGrad.addColorStop(0, '#061326');
       skyGrad.addColorStop(.55, '#0a2742');
       skyGrad.addColorStop(1, '#020811');
+    } else if (this.worldNum === '1-6') {
+      skyGrad.addColorStop(0, '#031b35');
+      skyGrad.addColorStop(.42, '#07536a');
+      skyGrad.addColorStop(1, '#04152f');
     } else if (this.worldNum === '1-5') {
       skyGrad.addColorStop(0, '#10051c');
       skyGrad.addColorStop(0.55, '#17112a');
@@ -2202,6 +2411,7 @@ class ParallaxCyberBackground {
     }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    if (this.worldNum === '1-6') this.drawUnderwater(ctx, cameraX, time);
 
     // En Nivel 4: Curvatura de la Tierra abajo y satélite gigante
     if (this.worldNum === '1-5' || this.worldNum === 'SUB-A') {
@@ -2337,7 +2547,7 @@ class ParallaxCyberBackground {
         ctx.restore();
       });
       ctx.restore();
-    } else if (!['1-5', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
+    } else if (!['1-5', '1-6', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
       // Luna Cuántica visible desde los distritos terrestres.
       ctx.save();
       const moonX = CANVAS_WIDTH - 240 - (cameraX * 0.02);
@@ -2371,7 +2581,7 @@ class ParallaxCyberBackground {
     }
 
     // Los subniveles tienen cielos propios: sin estrellas del fondo genérico.
-    if (!['SUB-A', 'SUB-B'].includes(this.worldNum)) {
+    if (!['1-6', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
       ctx.fillStyle = '#fff';
       this.stars.forEach(s => {
         const alpha = (Math.sin(Date.now() / 400 + s.twinkle) + 1) / 2;
@@ -2404,7 +2614,7 @@ class ParallaxCyberBackground {
     }
 
     // Skyline en capas con ventanas según el tono de cada distrito.
-    if (!['1-4', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
+    if (!['1-4', '1-6', 'SUB-A', 'SUB-B'].includes(this.worldNum)) {
       ctx.fillStyle = this.worldNum === '1-5' ? '#100d19' : (this.worldNum === '1-3' ? '#140008' : (this.worldNum === '1-2' ? '#110920' : '#090d16'));
       const offsetFar = cameraX * 0.12;
       this.skylineFar.forEach(b => {
@@ -2678,7 +2888,7 @@ class PlatformerGame {
     // Avanzar de nivel
     document.getElementById('btn-next-level').addEventListener('click', () => {
       document.getElementById('screen-victory').classList.add('hidden');
-      const nextWorld = { '1-1': '1-2', '1-2': '1-3', '1-3': '1-4', '1-4': '1-5' }[this.currentWorld];
+      const nextWorld = { '1-1': '1-2', '1-2': '1-3', '1-3': '1-4', '1-4': '1-5', '1-5': '1-6' }[this.currentWorld];
       if (nextWorld) {
         this.loadLevel(nextWorld);
         this.saveProgress(nextWorld);
@@ -2726,6 +2936,7 @@ class PlatformerGame {
     this.ethicsSeen = new Set();
     this.runState = 'playing';
     document.getElementById('hud-world-num').textContent = worldId;
+    document.getElementById('ocean-controls-hint').classList.toggle('hidden', worldId !== '1-6');
     this.projectiles = [];
     this.boss = null;
     this.purgeSwitch = null;
@@ -2739,6 +2950,7 @@ class PlatformerGame {
     else if (worldId === '1-3') this.buildLevel3();
     else if (worldId === '1-4') this.buildLevel4();
     else if (worldId === '1-5') this.buildLevel5();
+    else if (worldId === '1-6') this.buildLevel6();
     else if (worldId === 'SUB-A') this.buildBonusSublevelA();
     else if (worldId === 'SUB-B') this.buildBonusSublevelB();
   }
@@ -3089,6 +3301,79 @@ class PlatformerGame {
     this.player.reset();
   }
 
+  // --- MUNDO 1-6: EL ABISMO DE DATOS ---
+  buildLevel6() {
+    this.levelWidth = 6200;
+    this.background = new ParallaxCyberBackground(this.levelWidth, '1-6');
+    this.platforms = [];
+    this.movingPlatforms = [];
+    this.bouncePads = [];
+    this.laserBars = [];
+    this.mysteryBlocks = [];
+    this.dataBits = [];
+    this.enemies = [];
+
+    const floorY = 570;
+    this.platforms.push({ x: 0, y: floorY, width: 900, height: 160 });
+    this.platforms.push({ x: 1050, y: floorY, width: 900, height: 160 });
+    this.platforms.push({ x: 2150, y: floorY, width: 1200, height: 160 });
+    this.platforms.push({ x: 3550, y: floorY, width: 1100, height: 160 });
+    this.platforms.push({ x: 4850, y: floorY, width: 1350, height: 160 });
+
+    const addPlat = (x, y, width) => this.platforms.push({ x, y, width, height: 24 });
+    addPlat(490, 425, 170); addPlat(790, 340, 180);
+    addPlat(1160, 420, 180); addPlat(1510, 325, 190); addPlat(1820, 430, 160);
+    addPlat(2220, 405, 190); addPlat(2580, 315, 190); addPlat(2970, 400, 200);
+    addPlat(3440, 425, 170); addPlat(3790, 335, 210); addPlat(4210, 415, 180);
+    addPlat(4680, 405, 170); addPlat(5080, 365, 190); addPlat(5470, 300, 220);
+
+    // Corrientes de burbujas entre tramos de arrecife.
+    this.movingPlatforms.push(new MovingPlatform(900, 472, 125, 22, 75, 0, 1.35));
+    this.movingPlatforms.push(new MovingPlatform(1980, 455, 130, 22, 0, 55, 1.25));
+    this.movingPlatforms.push(new MovingPlatform(3360, 470, 125, 22, 70, 0, 1.45));
+    this.movingPlatforms.push(new MovingPlatform(4660, 465, 130, 22, 0, 52, 1.3));
+
+    // Chorros de presión: barreras láser que se mueven entre ruinas.
+    this.laserBars.push(new LaserBar(1390, 240, 82, .022, 2));
+    this.laserBars.push(new LaserBar(2840, 225, 96, -.021, 2.5));
+    this.laserBars.push(new LaserBar(4020, 230, 90, .024, 2));
+    this.laserBars.push(new LaserBar(5260, 215, 100, -.023, 2.5));
+
+    this.mysteryBlocks.push(new MysteryBlock(560, 300, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(1260, 300, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(2350, 330, 'overclock'));
+    this.mysteryBlocks.push(new MysteryBlock(3150, 300, 'shield'));
+    this.mysteryBlocks.push(new MysteryBlock(3910, 270, 'laser'));
+    this.mysteryBlocks.push(new MysteryBlock(5040, 300, 'overclock'));
+
+    for (let i = 0; i < 8; i++) this.dataBits.push(new DataBit(340 + i * 38, 365 - Math.sin(i / 7 * Math.PI) * 55));
+    for (let i = 0; i < 9; i++) this.dataBits.push(new DataBit(1530 + i * 38, 255));
+    for (let i = 0; i < 10; i++) this.dataBits.push(new DataBit(2590 + i * 38, 250 - Math.sin(i / 9 * Math.PI) * 48));
+    for (let i = 0; i < 9; i++) this.dataBits.push(new DataBit(3820 + i * 38, 270));
+    for (let i = 0; i < 8; i++) this.dataBits.push(new DataBit(5190 + i * 38, 245));
+
+    this.enemies.push(new SeaGlitchFish(700, 380, 140, 1.25));
+    this.enemies.push(new ElectricJellyfish(1110, 260, 74, .052));
+    this.enemies.push(new SeaGlitchFish(1450, 335, 175, 1.5));
+    this.enemies.push(new ElectricJellyfish(1940, 345, 68, .045));
+    this.enemies.push(new SeaGlitchFish(2320, 420, 170, 1.4));
+    this.enemies.push(new ElectricJellyfish(2780, 235, 82, .055));
+    this.enemies.push(new SeaGlitchFish(3150, 345, 130, 1.65));
+    this.enemies.push(new ElectricJellyfish(3500, 295, 74, .05));
+    this.enemies.push(new SeaGlitchFish(3930, 380, 190, 1.35));
+    this.enemies.push(new ElectricJellyfish(4570, 260, 80, .058));
+    this.enemies.push(new SeaGlitchFish(5050, 390, 165, 1.55));
+    this.enemies.push(new ElectricJellyfish(5480, 255, 62, .05));
+
+    this.goalPole = new DataGoalPole(5840, floorY - 380, 380);
+    this.boss = null;
+    this.purgeSwitch = null;
+    this.portal = null;
+    this.player.spawnX = 100;
+    this.player.spawnY = 460;
+    this.player.reset();
+  }
+
   buildBonusSublevelA() {
     this.levelWidth = 2250;
     this.background = new ParallaxCyberBackground(this.levelWidth, 'SUB-A');
@@ -3191,6 +3476,8 @@ class PlatformerGame {
         this.triggerNexusMsg('¡MUNDO 1-4! La Nube Cuántica Orbital. ¡Encuentra las Botas Cuánticas [🪽] para realizar DOBLE SALTO en el aire!');
       } else if (this.currentWorld === '1-5') {
         this.triggerNexusMsg('¡MUNDO 1-5! El Archivo de las Decisiones está bajo ataque. Supera sus bóvedas y ayuda a NEXUS a auditar quién responde por una IA dañina.');
+      } else if (this.currentWorld === '1-6') {
+        this.triggerNexusMsg('¡MUNDO 1-6! ¡Ahora Lucas nada! Mantén ▲ / ESPACIO para subir y ▼ / S para bucear. Esquiva peces corruptos, medusas eléctricas y chorros de presión.');
       } else if (this.currentWorld === 'SUB-A') {
         this.triggerNexusMsg('CÁMARA SECRETA: recoge Data-Bits y recupera mejoras; usa S / ▼ en el portal azul para volver.');
       } else if (this.currentWorld === 'SUB-B') {
@@ -3326,12 +3613,20 @@ class PlatformerGame {
       nextBtn.textContent = 'ENTRAR A MUNDO 1-5: EL ARCHIVO DE LAS DECISIONES ❯';
       nextBtn.style.display = 'inline-block';
       playAgainBtn.style.display = 'none';
+    } else if (this.currentWorld === '1-5') {
+      document.getElementById('vic-badge').textContent = '¡MUNDO 1-5 SUPERADO!';
+      document.getElementById('vic-title').textContent = 'ARCHIVO DE DECISIONES AUDITADO';
+      document.getElementById('vic-sub').textContent = 'Las pruebas están protegidas. Una señal de emergencia llega desde un arrecife de datos en el fondo del océano.';
+      document.getElementById('vic-verdict-text').textContent = 'NEXUS: La contaminación digital alcanzó el santuario marino. Vamos a detenerla sin invadir la privacidad de quienes viven y visitan el arrecife.';
+      nextBtn.textContent = 'BUCEAR A MUNDO 1-6: EL ABISMO DE DATOS ❯';
+      nextBtn.style.display = 'inline-block';
+      playAgainBtn.style.display = 'none';
     } else {
       document.getElementById('vic-badge').textContent = '★★★★ ¡CAMPAÑA COMPLETADA! ★★★★';
       document.getElementById('vic-title').textContent = 'RED GLOBAL LIBERADA Y SEGURA';
-      document.getElementById('vic-sub').textContent = 'Has completado los 5 mundos y expuesto quién debe responder por el uso de una IA dañina.';
+      document.getElementById('vic-sub').textContent = 'Has completado los 6 mundos y protegido la privacidad de las comunidades y ecosistemas.';
       const correctPrinciples = Object.values(this.ethicsDecisions).filter(Boolean).length;
-      document.getElementById('vic-verdict-text').textContent = `NEXUS: Aplicaste correctamente ${correctPrinciples} de 5 principios de IA responsable. ¡Tu pensamiento crítico ayudó a liberar la red global!`;
+      document.getElementById('vic-verdict-text').textContent = `NEXUS: Aplicaste correctamente ${correctPrinciples} de 6 principios de IA responsable. ¡Tu pensamiento crítico ayudó a liberar la red global!`;
       nextBtn.style.display = 'none';
       playAgainBtn.style.display = 'inline-block';
       this.sound.playFanfare();
@@ -3401,14 +3696,15 @@ class PlatformerGame {
       '1-2': { x: 1180, title: 'SESGO • DATOS REPRESENTATIVOS', question: 'El sistema de transporte predice retrasos peor en algunos barrios porque casi no tiene datos de esas zonas. ¿Qué mejora ayuda más?', options: ['Incluir datos diversos y revisar errores por zona', 'Usar el mismo modelo sin revisar resultados'], correct: 0, lesson: 'Los datos incompletos pueden producir resultados desiguales. Auditar por grupos ayuda a detectar el sesgo.', points: 500, benefits: { shield: true, lives: 1 }, reward: '+500 puntos, Firewall y una vida extra.' },
       '1-3': { x: 3300, title: 'EXPLICABILIDAD • REVISAR LA DECISIÓN', question: 'Una IA bloquea una cuenta y no explica por qué. ¿Qué debería ofrecer un sistema responsable?', options: ['Una razón comprensible y una vía de revisión', 'Solo un puntaje secreto'], correct: 0, lesson: 'Las personas necesitan entender y cuestionar decisiones automatizadas.', points: 500, benefits: { laser: true, seconds: 30 }, reward: '+500 puntos, recuperas el Bláster y ganas 30 segundos.' },
       '1-4': { x: 3300, title: 'USO RESPONSABLE • SUPERVISIÓN HUMANA', question: 'Una IA detecta una posible amenaza, pero la evidencia es incierta. ¿Qué es lo más responsable?', options: ['Pedir revisión humana antes de tomar una medida grave', 'Dejar que actúe automáticamente sin revisión'], correct: 0, lesson: 'La supervisión humana importa cuando hay incertidumbre y consecuencias importantes.', points: 500, benefits: { overclock: true, lives: 1 }, reward: '+500 puntos, Overclock temporal y una vida extra.' },
-      '1-5': { x: 3200, title: 'RESPONSABILIDAD • RENDICIÓN DE CUENTAS', question: 'Un sistema de IA causa un daño porque la organización lo desplegó sin controles adecuados. ¿Qué corresponde hacer?', options: ['La organización debe explicar lo ocurrido, corregir el daño y responder por el sistema', 'Culpar a la IA como si pudiera asumir la responsabilidad'], correct: 0, lesson: 'La IA no reemplaza la responsabilidad de las personas y organizaciones que la diseñan, despliegan y supervisan.', points: 1000, benefits: { shield: true, laser: true, lives: 2 }, reward: '+1000 puntos, Firewall, Bláster y dos vidas extra.' }
+      '1-5': { x: 3200, title: 'RESPONSABILIDAD • RENDICIÓN DE CUENTAS', question: 'Un sistema de IA causa un daño porque la organización lo desplegó sin controles adecuados. ¿Qué corresponde hacer?', options: ['La organización debe explicar lo ocurrido, corregir el daño y responder por el sistema', 'Culpar a la IA como si pudiera asumir la responsabilidad'], correct: 0, lesson: 'La IA no reemplaza la responsabilidad de las personas y organizaciones que la diseñan, despliegan y supervisan.', points: 1000, benefits: { shield: true, laser: true, lives: 2 }, reward: '+1000 puntos, Firewall, Bláster y dos vidas extra.' },
+      '1-6': { x: 3450, title: 'PRIVACIDAD • DATOS EN EL ARRECIFE', question: 'Una IA usa cámaras para detectar pesca ilegal en una reserva marina. ¿Cómo debería proteger a visitantes y comunidades locales?', options: ['Analizar solo las señales necesarias, difuminar rostros y borrar pronto los datos identificables', 'Guardar todo el video y conservarlo para siempre por si alguna vez sirve'], correct: 0, lesson: 'La privacidad se protege desde el diseño: limitar la recolección, reducir la identificación y borrar los datos cuando dejan de ser necesarios.', points: 1000, benefits: { shield: true, laser: true, lives: 1, seconds: 30 }, reward: '+1000 puntos, Firewall, Bláster, una vida y 30 segundos.' }
     };
     const lesson = lessons[this.currentWorld];
     if (!lesson || this.ethicsSeen.has(this.currentWorld) || this.player.x < lesson.x) return;
 
     // En los tramos con abismos, si Lucas llega saltando al reto, esperamos a que aterrice
     // y lo mantenemos sobre la plataforma segura más cercana antes del panel.
-    const safeEdges = { '1-3': 3650, '1-4': 3740, '1-5': 3750 };
+    const safeEdges = { '1-3': 3650, '1-4': 3740, '1-5': 3750, '1-6': 3980 };
     const safeEdgeX = safeEdges[this.currentWorld];
     if (safeEdgeX && !this.player.onGround) {
       if (this.player.x > safeEdgeX) {

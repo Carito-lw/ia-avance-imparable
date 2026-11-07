@@ -27,6 +27,7 @@ Tienes dos formas directas de jugarlo:
 * **Pausar / continuar:** `P`.
 * **Subniveles secretos:** acércate al portal verde y pulsa `S` o `Flecha Abajo`; usa el portal azul para salir.
 * **Móvil o pantalla táctil:** gira el teléfono a horizontal y usa los botones en pantalla, incluido `▼` para entrar o salir de portales. Al jugar se intenta activar pantalla completa; usa `⛶` para entrar o salir si el navegador lo permite.
+* **Mundo 1-6, bajo el agua:** mantén `Espacio` / `▲` para nadar hacia arriba y `S` / `▼` para bucear; en pantalla táctil mantén los botones para impulsarte.
 * **Decisiones educativas y menús:** clic o toque sobre las opciones.
 * **Sonido:** Botón 🔊 en la esquina superior derecha para silenciar o reactivar el audio.
 
@@ -39,6 +40,7 @@ Tienes dos formas directas de jugarlo:
 * **Mundo 1-3 — El Núcleo Central:** explicabilidad, derecho a revisar decisiones automatizadas y batalla contra el Guardián Corrupto, una IA blindada que protege el núcleo.
 * **Mundo 1-4 — La Nube Cuántica y Estación Orbital:** uso responsable y supervisión humana.
 * **Mundo 1-5 — El Archivo de las Decisiones:** plataformas de bóveda, láseres y drones; responsabilidad y rendición de cuentas cuando una IA causa daño.
+* **Mundo 1-6 — El Abismo de Datos:** Lucas nada y bucea por cardúmenes, peces corruptos, medusas eléctricas, ruinas y chorros de presión; privacidad y minimización de datos en una reserva marina.
 * Las decisiones correctas dan recompensas útiles; cada opción muestra una explicación para aprender sin salir de la partida.
 * Una respuesta correcta puede dar Firewall, Bláster, tiempo, Overclock y vidas extra. Una respuesta incorrecta resta 500 puntos y una vida.
 * Las vidas no tienen un tope de tres: se acumulan entre mundos, y cada 100 Data-Bits concede una vida. El contador del HUD muestra el total.
@@ -49,4 +51,4 @@ Tienes dos formas directas de jugarlo:
 
 ## Ampliar la campaña
 
-Los mundos se construyen en `game.js` mediante `buildLevel1` a `buildLevel5`, y se seleccionan desde `loadLevel`. Para agregar un mundo: crea su función `buildLevelN`, registra su identificador en `loadLevel`, añade su reto educativo en `checkEthicsChallenge`, y actualiza el mapa de avance y los textos de victoria. Los activos de imagen y audio están en `assets/`.
+Los mundos se construyen en `game.js` mediante `buildLevel1` a `buildLevel6`, y se seleccionan desde `loadLevel`. Para agregar un mundo: crea su función `buildLevelN`, registra su identificador en `loadLevel`, añade su reto educativo en `checkEthicsChallenge`, y actualiza el mapa de avance y los textos de victoria. Los activos de imagen y audio están en `assets/`.

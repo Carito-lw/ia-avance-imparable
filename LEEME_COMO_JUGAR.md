@@ -26,7 +26,7 @@ Tienes dos formas directas de jugarlo:
 * **Disparar:** `F` o `E` cuando tengas el bláster.
 * **Pausar / continuar:** `P`.
 * **Subniveles secretos:** acércate al portal verde y pulsa `S` o `Flecha Abajo`; usa el portal azul para salir.
-* **Móvil o pantalla táctil:** gira el teléfono a horizontal y usa los botones en pantalla, incluido `▼` para entrar o salir de portales.
+* **Móvil o pantalla táctil:** gira el teléfono a horizontal y usa los botones en pantalla, incluido `▼` para entrar o salir de portales. Al jugar se intenta activar pantalla completa; usa `⛶` para entrar o salir si el navegador lo permite.
 * **Decisiones educativas y menús:** clic o toque sobre las opciones.
 * **Sonido:** Botón 🔊 en la esquina superior derecha para silenciar o reactivar el audio.
 

@@ -339,6 +339,22 @@ class InputState {
       }
     });
 
+    const releaseAll = () => {
+      this.left = this.right = this.jump = this.down = false;
+      this.jumpJustPressed = this.downJustPressed = this.shootJustPressed = false;
+    };
+    window.addEventListener('blur', releaseAll);
+    window.addEventListener('pointerup', (event) => {
+      if (event.pointerType === 'touch') {
+        this.jump = false;
+        this.down = false;
+      }
+    });
+    window.addEventListener('pointercancel', releaseAll);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) releaseAll();
+    });
+
     document.querySelectorAll('[data-control]').forEach((button) => {
       const control = button.dataset.control;
       const release = () => {
@@ -359,6 +375,8 @@ class InputState {
       button.addEventListener('pointerup', release);
       button.addEventListener('pointercancel', release);
       button.addEventListener('lostpointercapture', release);
+      button.addEventListener('touchend', release, { passive: true });
+      button.addEventListener('touchcancel', release, { passive: true });
     });
   }
 }
@@ -1662,6 +1680,9 @@ class MarioLucas {
     }
 
     if (input.jumpJustPressed) {
+      // Consumir el evento de salto en el primer frame: si quedara activo,
+      // Lucas volvería a saltar cada vez que toca el suelo.
+      input.jumpJustPressed = false;
       if (this.coyoteTime > 0) {
         this.vy = JUMP_FORCE_INITIAL;
         this.isJumping = true;
@@ -2579,9 +2600,32 @@ class PlatformerGame {
     return true;
   }
 
+  async toggleFullscreen() {
+    const container = document.getElementById('game-container');
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (fullscreenElement) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        return;
+      }
+
+      const request = container.requestFullscreen || container.webkitRequestFullscreen;
+      if (!request) {
+        this.triggerNexusMsg('Este navegador no permite pantalla completa. Prueba “Añadir a pantalla de inicio”.');
+        return;
+      }
+      await request.call(container, { navigationUI: 'hide' });
+      if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {});
+    } catch {
+      this.triggerNexusMsg('No se pudo activar pantalla completa. Prueba desde el menú del navegador.');
+    }
+  }
+
   initDOM() {
     document.getElementById('btn-start-game').addEventListener('click', () => {
       this.sound.init();
+      if (matchMedia('(pointer: coarse)').matches) this.toggleFullscreen();
       document.getElementById('screen-intro').classList.add('hidden');
       this.startLevel();
     });
@@ -2589,6 +2633,20 @@ class PlatformerGame {
     document.getElementById('btn-sound-toggle').addEventListener('click', () => {
       const active = this.sound.toggleMute();
       document.getElementById('sound-icon').textContent = active ? '🔊' : '🔇';
+    });
+
+    document.getElementById('btn-fullscreen').addEventListener('click', () => this.toggleFullscreen());
+    document.addEventListener('fullscreenchange', () => {
+      const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      const button = document.getElementById('btn-fullscreen');
+      button.setAttribute('aria-label', active ? 'Salir de pantalla completa' : 'Entrar en pantalla completa');
+      button.title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+      const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      const button = document.getElementById('btn-fullscreen');
+      button.setAttribute('aria-label', active ? 'Salir de pantalla completa' : 'Entrar en pantalla completa');
+      button.title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
     });
 
     document.getElementById('btn-ethics-continue').addEventListener('click', () => {
